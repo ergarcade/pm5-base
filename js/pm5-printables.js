@@ -142,6 +142,17 @@ const pm5printables = {
     },
     splitIntervalType: function(n) {
         return n;
+    },
+    logDate: function(n) {
+        let day = n & 0x07;                     /* bits 0 to 3 */
+        let month = (n >> 4) & 0x1f;            /* bits 4 to 8 */
+        let year = 2000 + ((n >> 9) & 0x7f);    /* bits 9 to 13 (15); epoch is 2000 */
+        return day + "/" + month + "/" + year;
+    },
+    logTime: function(n) {
+        let h = (n >> 8) & 0xff;                /* top byte */
+        let m = n & 0xff;                       /* bottom byte */
+        return h + ":" + m;
     }
 };
 
@@ -272,11 +283,11 @@ const pm5fields = {
     },
     averageDriveForce: {
         label: 'Average Drive Force',
-        printable: pm5printables['empty'],
+        printable: pm5printables['fixed'],
     },
     workPerStroke: {
         label: 'Work Per Stroke',
-        printable: pm5printables['empty'],
+        printable: pm5printables['fixed'],
     },
     strokeCount: {
         label: 'Stroke Count',
@@ -372,11 +383,11 @@ const pm5fields = {
     },
     logEntryDate: {
         label: 'Log Entry Date',
-        printable: pm5printables['empty'],
+        printable: pm5printables['logDate'],
     },
     logEntryTime: {
         label: 'Log Entry Time',
-        printable: pm5printables['empty'],
+        printable: pm5printables['logTime'],
     },
     timeElapsed: {
         label: 'Time Elapsed',
