@@ -144,25 +144,15 @@ const pm5printables = {
         return n;
     },
     logDate: function(n) {
-        let month = n & 0x07;                   /* bits 0 to 3 */
+        let month = n & 0x0f;                   /* bits 0 to 3 */
         let day = (n >> 4) & 0x1f;              /* bits 4 to 8 */
         let year = 2000 + ((n >> 9) & 0x7f);    /* bits 9 to 13 (15); epoch is 2000 */
-
-        console.log('date: decimal: ' + n);
-        console.log('date: hex    : ' + n.toString(16));
-        console.log('date: binary : ' + n.toString(2));
-        console.log('date: date   : ' + day + '/' + month + '/' + year);
 
         return day + "/" + month + "/" + year;
     },
     logTime: function(n) {
         let h = (n >> 8) & 0xff;                /* top byte */
         let m = n & 0xff;                       /* bottom byte */
-
-        console.log('time: decimal: ' + n);
-        console.log('time: hex:     ' + n.toString(16));
-        console.log('time: binary:  ' + n.toString(2));
-        console.log('time: time:    ' + h + ':' + m);
 
         return h + ":" + m;
     }
