@@ -289,6 +289,18 @@ class PM5 {
                 // return this._addForceCurveData();
                 break;
 
+            case 'additional-workout-end':
+                return this._addAdditionalEndOfWorkoutSummaryData();
+                break;
+
+            case 'heart-rate-belt-information':
+                return this._addHeartRateBeltInformation();
+                break;
+
+            case 'additional-workout-end2':
+                return this._addAdditionalEndOfWorkoutSummaryData2();
+                break;
+
             default:
                 break;
         }
@@ -345,6 +357,18 @@ class PM5 {
 
             case 'force-curve-data':
                 return this._removeForceCurveData();
+                break;
+
+            case 'additional-workout-end':
+                return this._removeAdditionalEndOfWorkoutSummaryData();
+                break;
+
+            case 'heart-rate-belt-information':
+                return this._removeHeartRateBeltInformation();
+                break;
+
+            case 'additional-workout-end2':
+                return this._removeAdditionalEndOfWorkoutSummaryData2();
                 break;
 
             default:
@@ -432,7 +456,7 @@ class PM5 {
      */
     _cbForceCurveData(monitor, e) {
         const v = new Uint8Array(e.target.value.buffer);
-        const numCharacteristics = (v[0] & 0xf0) >> 4;
+        const numCharacteristics = (v[0] >> 4) & 0x0f;
         const numDataPoints = v[0] & 0x0f;
         const sequenceNumber = v[1];
         let data = [];
@@ -873,6 +897,101 @@ class PM5 {
 
     /*
      */
+    _extractAdditionalEndOfWorkoutSummary(e, multiplexed = false) {
+        const o = multiplexed ? 1 : 0;
+        const v = new Uint8Array(e.target.value.buffer);
+        const r = {};
+
+        r.logEntryDate =        (v[o+0] + (v[o+1] << 8));
+        r.logEntryTime =        (v[o+2] + (v[o+3] << 8));
+
+        if (!multiplexed) {
+            r.splitIntervalType =   v[o+4];
+        }
+
+        r.splitIntervalSize =   (v[o+5] + (v[o+6] << 8));
+        r.splitIntervalCount =  v[o+7];
+        r.totalCalories =       (v[o+8] + (v[o+9] << 8));
+        r.watts =               (v[o+10] + (v[o+11] << 8));
+        r.totalRestDistance =   (v[o+12] + (v[o+13] << 8) + (v[o+14] << 16));
+        r.intervalRestTime =    (v[o+15] + (v[o+16] << 8));
+        r.averageCalories =     (v[o+17] + (v[o+18] << 8));
+
+        return r;
+    }
+
+    /*
+     */
+    _cbAdditionalEndOfWorkoutSummaryData(monitor, e, multiplexed = false) {
+        const event = {
+            type: multiplexed ? 'multiplexed-information' : 'additional-workout-end',
+            source: monitor,
+            raw: e.target.value,
+            data: monitor._extractAdditionalEndOfWorkoutSummary(e, multiplexed)
+        };
+
+        monitor.eventTarget.dispatchEvent(event);
+    }
+
+    /*
+     */
+    _extractHeartRateBeltInformation(e, multiplexed = false) {
+        const o = multiplexed ? 1 : 0;
+        const v = new Uint8Array(e.target.value.buffer);
+        const r = {};
+
+        r.manufacturerId =  v[o+0];
+        r.deviceType =      v[o+1];
+        r.beltId =          v[o+2] + (v[o+3] << 8) + (v[o+4] << 16) + (v[o+5] << 24);
+
+        return r;
+    }
+
+    /*
+     */
+    _cbHeartRateBeltInformation(monitor, e, multiplexed = false) {
+        const event = {
+            type: multiplexed ? 'multiplexed-information' : 'heart-rate-belt-information',
+            source: monitor,
+            raw: e.target.value,
+            data: monitor._extractHeartRateBeltInformation(e, multiplexed)
+        };
+
+        monitor.eventTarget.dispatchEvent(event);
+    }
+
+    /*
+     */
+    _extractAdditionalEndOfWorkoutSummaryData2(e, multiplexed = false) {
+        const o = multiplexed ? 1 : 0;
+        const v = new Uint8Array(e.target.value.buffer);
+        const r = {};
+
+        r.logEntryDate =      (v[o+0] + (v[o+1] << 8));
+        r.logEntryTime =      (v[o+2] + (v[o+3] << 8));
+        r.averagePace =       (v[o+4] + (v[o+5] << 8));
+        r.gameIdentifierWorkoutVerified = v[o+6];
+        r.gameScore =         (v[o+7] + (v[o+8] << 8));
+        r.ergMachineType =    v[o+9];
+
+        return r;
+    }
+
+    /*
+     */
+    _cbAdditionalEndOfWorkoutSummaryData2(monitor, e, multiplexed = false) {
+        const event = {
+            type: multiplexed ? 'multiplexed-information' : 'additional-workout-end2',
+            source: monitor,
+            raw: e.target.value,
+            data: monitor._extractAdditionalEndOfWorkoutSummaryData2(e, multiplexed)
+        };
+
+        monitor.eventTarget.dispatchEvent(event);
+    }
+
+    /*
+     */
     _cbMultiplexedInformation(monitor, e) {
         const characteristic = e.target.value.getUint8();
 
@@ -886,11 +1005,9 @@ class PM5 {
             case 0x37: monitor._cbSplitIntervalData(monitor, e, true); break;
             case 0x38: monitor._cbAdditionalSplitIntervalData(monitor, e, true); break;
             case 0x39: monitor._cbEndOfWorkoutSummaryData(monitor, e, true); break;
-            /*
             case 0x3a: monitor._cbAdditionalEndOfWorkoutSummaryData(monitor, e, true); break;
             case 0x3b: monitor._cbHeartRateBeltInformation(monitor, e, true); break;
             case 0x3c: monitor._cbAdditionalEndOfWorkoutSummaryData2(monitor, e, true); break;
-            */
             default:
                 console.log('unhandled characteristic ' + characteristic.toString(16));
                 break;
@@ -1091,6 +1208,43 @@ class PM5 {
     _removeForceCurveData() {
         return this._teardownCharacteristicValueListener(
                 characteristics.rowingService.forceCurveData, this._cbForceCurveData
+        );
+    }
+
+    _addAdditionalEndOfWorkoutSummaryData() {
+        return this._setupCharacteristicValueListener(
+                characteristics.rowingService.forceCurveData, this._cbAdditionalEndOfWorkoutSummaryData
+        );
+    }
+
+    _removeAdditionalEndOfWorkoutSummaryData() {
+        return this._teardownCharacteristicValueListener(
+                characteristics.rowingService.forceCurveData, this._cbAdditionalEndOfWorkoutSummaryData
+        );
+    }
+
+    _addHeartRateBeltInformation() {
+        return this._setupCharacteristicValueListener(
+                characteristics.rowingService.forceCurveData, this._cbHeartRateBeltInformation
+        );
+    }
+
+    _removeHeartRateBeltInformation() {
+        return this._teardownCharacteristicValueListener(
+                characteristics.rowingService.forceCurveData, this._cbHeartRateBeltInformation
+        );
+    }
+
+
+    _addAdditionalEndOfWorkoutSummaryData2() {
+        return this._setupCharacteristicValueListener(
+                characteristics.rowingService.forceCurveData, this._cbAdditionalEndOfWorkoutSummaryData2
+        );
+    }
+
+    _removeAdditionalEndOfWorkoutSummaryData2() {
+        return this._teardownCharacteristicValueListener(
+                characteristics.rowingService.forceCurveData, this._cbAdditionalEndOfWorkoutSummaryData2
         );
     }
 

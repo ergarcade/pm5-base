@@ -155,6 +155,29 @@ const pm5printables = {
         let m = n & 0xff;                       /* bottom byte */
 
         return h + ":" + m;
+    },
+    gameId: function(n) {
+        let game_id = n & 0x0f;
+        let workout_verified = (n >> 4) & 0x0f; /* JavaScript uses >>> for zero-fill right shift! */
+        let r = '';
+
+        switch (game_id) {
+            case 0: r = 'None '; break;
+            case 1: r = 'Fish '; break;
+            case 2: r = 'Dart '; break;
+            case 3: r = 'Target basic '; break;
+            case 4: r = 'Target advanced '; break;
+            case 5: r = 'Cross Training '; break;
+            default:
+                break;
+        }
+
+        r += '(' + (!workout_verified ? 'un' : '') + 'verified)';
+
+        return r;
+    },
+    erg_machine_type: function(n) {
+        return n;
     }
 };
 
@@ -422,5 +445,37 @@ const pm5fields = {
     recoveryHeartRate: {
         label: 'Recovery Heart Rate',
         printable: pm5printables['as_is'],
+    },
+    splitIntervalSize: {
+        label: 'Split/Interval Type',
+        printable: pm5printables['as_is'],
+    },
+    splitIntervalCount: {
+        label: 'Split/Interval Count',
+        printable: pm5printables['as_is'],
+    },
+    watts: {
+        label: 'Watts',
+        printable: pm5printables['watts']
+    },
+    totalRestDistance: {
+        label: 'Total Rest Distance',
+        printable: pm5printables['metres']
+    },
+    averageCalories: {
+        label: 'Average Calories',
+        printable: pm5printables['calories']
+    },
+    gameIdentifierWorkoutVerified: {
+        label: 'Game Identifer / Workout Verified',
+        printable: pm5printables['gameId']
+    },
+    gameScore: {
+        label: 'Game score',
+        printable: pm5printables['as_is']
+    },
+    ergMachineType: {
+        label: 'Erg Machine Type',
+        printable: pm5printables['erg_machine_type']
     }
 };
