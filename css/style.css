@@ -24,6 +24,9 @@ body {
     margin: 5px;
     padding: 10px;
 }
+#instruction-text {
+    width: inherit;
+}
 .highlight {
     background: #000;
     color: #fff;
