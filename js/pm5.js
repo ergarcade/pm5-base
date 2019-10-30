@@ -571,7 +571,7 @@ class PM5 {
         };
 
         if (multiplexed) {
-            r.averagePower = v[o+16] + (v[o+17] << 16);
+            r.averagePower = v[o+16] + (v[o+17] << 8);
         }
 
         return r;
