@@ -3,16 +3,31 @@ let m;
 let cbConnecting = function() {
     document.querySelector('#connect').innerText = 'Connecting';
     document.querySelector('#connect').disabled = true;
+    document.querySelector('#monitor-information').textContent = 'Please wait...';
 };
 
 let cbConnected = function() {
     document.querySelector('#connect').innerText = 'Disconnect';
     document.querySelector('#connect').disabled = false;
+
+    m.getMonitorInformation()
+        .then(monitorInformation => {
+            let mi = document.querySelector('#monitor-information');
+            mi.textContent = 'FW: ' + monitorInformation.firmwareRevision + ' | ' +
+                'HW: ' + monitorInformation.hardwareRevision + ' | ' +
+                'MNF: '+ monitorInformation.manufacturerName + ' | ' +
+                'SN: ' + monitorInformation.serialNumber;
+        })
+        .catch(error => {
+            document.querySelector('#monitor-information').textContent = error;
+        });
+
 };
 
 let cbDisconnected = function() {
     document.querySelector('#connect').innerText = 'Connect';
     document.querySelector('#connect').disabled = false;
+    document.querySelector('#monitor-information').textContent = '';
 };
 
 let cbMessage = function(m) {
