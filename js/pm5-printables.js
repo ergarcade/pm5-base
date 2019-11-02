@@ -1,12 +1,12 @@
 const pm5printables = {
     empty: function(v) {
-        return v;
+        return v.toString();
     },
     ms2hms: function(msecs) {
         return new Date(msecs).toISOString().substr(11, 8);
     },
     secs2hms: function(secs) {
-        return new Date(secs * 1000).toISOString().substr(11, 11);
+        return new Date(secs * 1000).toISOString().substr(11, 10);
     },
     metres: function(m) {
         return m.toLocaleString() + 'm';
@@ -106,7 +106,7 @@ const pm5printables = {
             data.workoutDuration *= 0.01;
         }
         */
-        return wduration;
+        return wduration.toString();
     },
     workoutDurationType: function(wdurationtype) {
         switch (wdurationtype) {
@@ -120,28 +120,28 @@ const pm5printables = {
         return 'unknown';
     },
     as_is: function(n) {
-        return n;
+        return n.toString();
     },
     fixed: function(n) {
-        return n.toFixed(2);
+        return n.toFixed();
     },
     m_per_second: function(n) {
-        return n.toFixed(2) + "m/s";
+        return n.toFixed() + "m/s";
     },
     heartRate: function(n) {
         return n == 255 ? 'N/A' : n;
     },
     watts: function(n) {
-        return n.toFixed(2).toLocaleString() + 'W';
+        return n.toFixed().toLocaleString() + 'W';
     },
     calories: function(n) {
         return n.toLocaleString() + 'cals';
     },
     metres_fixed: function(n) {
-        return n.toFixed(2).toLocaleString() + 'm';
+        return n.toFixed().toLocaleString() + 'm';
     },
     splitIntervalType: function(n) {
-        return n;
+        return n.toString();
     },
     logDate: function(n) {
         let month = n & 0x0f;                   /* bits 0 to 3 */
@@ -177,7 +177,35 @@ const pm5printables = {
         return r;
     },
     erg_machine_type: function(n) {
-        return n;
+        r = '';
+
+        switch (n) {
+            case 0: r = 'Static D'; break;
+            case 1: r = 'Static C'; break;
+            case 2: r = 'Static A'; break;
+            case 3: r = 'Static B'; break;
+            case 5: r = 'Static E'; break;
+            case 7: r = 'Static Simulator'; break;
+            case 8: r = 'Static Dynamic'; break;
+            case 16: r = 'Slides A'; break;
+            case 17: r = 'Slides B'; break;
+            case 18: r = 'Slides C'; break;
+            case 19: r = 'Slides D'; break;
+            case 20: r = 'Slides E'; break;
+            case 32: r = 'Slides Dynamic'; break;
+            case 64: r = 'Static Dyno'; break;
+            case 128: r = 'Static Ski'; break;
+            case 143: r = 'Static Ski (simulator)'; break;
+            case 192: r = 'Bike'; break;
+            case 193: r = 'Bike (arms)'; break;
+            case 194: r = 'Bike (no arms)'; break;
+            case 207: r = 'Bike (simulator)'; break;
+            case 208: r = 'Num'; break;
+            default:
+                break;
+        }
+
+        return r;
     }
 };
 

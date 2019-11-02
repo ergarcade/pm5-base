@@ -89,10 +89,6 @@ const services = {
 };
 const characteristics = {
     informationService: {
-        modelNumber: {
-            id:         'ce060011-43e5-11e4-916c-0800200c9a66',
-            service:    services.information
-        },
         serialNumber: {
             id:         'ce060012-43e5-11e4-916c-0800200c9a66',
             service:    services.information
@@ -107,10 +103,6 @@ const characteristics = {
         },
         manufacturerName: {
             id:         'ce060015-43e5-11e4-916c-0800200c9a66',
-            service:    services.information
-        },
-        machineType: {
-            id:         'ce060016-43e5-11e4-916c-0800200c9a66',
             service:    services.information
         }
     },
@@ -1264,12 +1256,6 @@ class PM5 {
 
     /*
      */
-    getModelNumber() {
-        return this._getStringCharacteristicValue(characteristics.informationService.modelNumber);
-    }
-
-    /*
-     */
     getSerialNumber() {
         return this._getStringCharacteristicValue(characteristics.informationService.serialNumber);
     }
@@ -1294,26 +1280,10 @@ class PM5 {
 
     /*
      */
-    getMachineType() {
-        return this._getCharacteristic(characteristics.informationService.machineType)
-            .then(c => {
-                return c.readValue()
-            })
-            .then(v => {
-                return v.getUint8(0);
-            });
-    }
-
-    /*
-     */
     getMonitorInformation() {
         const monitorInformation = {};
 
-        return this.getModelNumber()
-            .then(modelNumber => {
-                monitorInformation.modelNumber = modelNumber;
-                return this.getSerialNumber();
-            })
+        return this.getSerialNumber()
             .then(serialNumber => {
                 monitorInformation.serialNumber = serialNumber;
                 return this.getHardwareRevision();
@@ -1328,10 +1298,6 @@ class PM5 {
             })
             .then(manufacturerName => {
                 monitorInformation.manufacturerName = manufacturerName;
-                return this.getMachineType();
-            })
-            .then(machineType => {
-                monitorInformation.machineType = machineType;
                 return Promise.resolve(monitorInformation);
             })
             .catch(error => {
