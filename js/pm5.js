@@ -81,96 +81,103 @@ EventTarget.prototype.dispatchEvent = function(event) {
  *
  * Inspired from https://github.com/GoogleChromeLabs/rowing-monitor
  */
+
+function UUID_long_PM5(UUID){
+    return "ce06" + UUID + "-43e5-11e4-916c-0800200c9a66";
+}
+
+
 const services = {
-    discovery:      { id: 'ce060000-43e5-11e4-916c-0800200c9a66' },
-    information:    { id: 'ce060010-43e5-11e4-916c-0800200c9a66' },
-    control:        { id: 'ce060020-43e5-11e4-916c-0800200c9a66' },
-    rowing:         { id: 'ce060030-43e5-11e4-916c-0800200c9a66' }
+    discovery:      { id: UUID_long_PM5('0000') },
+    information:    { id: UUID_long_PM5('0010') },
+    control:        { id: UUID_long_PM5('0020') },
+    rowing:         { id: UUID_long_PM5('0030') }
 };
+
 const characteristics = {
     informationService: {
         serialNumber: {
-            id:         'ce060012-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0012'),
             service:    services.information
         },
         hardwareRevision: {
-            id:         'ce060013-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0013'),
             service:    services.information
         },
         firmwareRevision: {
-            id:         'ce060014-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0014'),
             service:    services.information
         },
         manufacturerName: {
-            id:         'ce060015-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0015'),
             service:    services.information
         }
     },
     controlService: {
         transmit: {
-            id:         'ce060021-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0021'),
             service:    services.control
         },
         receive: {
-            id:         'ce060022-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0022'),
             service:    services.control
         }
     },
     rowingService: {
         generalStatus: {
-            id:         'ce060031-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0031'),
             service:    services.rowing
         },
         additionalStatus: {
-            id:         'ce060032-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0032'),
             service:    services.rowing
         },
         additionalStatus2: {
-            id:         'ce060033-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0033'),
             service:    services.rowing
         },
         generalStatusRate: {
-            id:         'ce060034-43e5-11e4-916c-0800200c9a66',
+            id:        UUID_long_PM5('0034'),
             service:    services.rowing
         },
         strokeData: {
-            id:         'ce060035-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0035'),
             service:    services.rowing
         },
         additionalStrokeData: {
-            id:         'ce060036-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0036'),
             service:    services.rowing
         },
         splitIntervalData: {
-            id:         'ce060037-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0037'),
             service:    services.rowing
         },
         additionalSplitIntervalData: {
-            id:         'ce060038-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0038'),
             service:    services.rowing
         },
         endOfWorkoutSummaryData: {
-            id:         'ce060039-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0039'),
             service:    services.rowing
         },
         additionalEndOfWorkoutSummaryData: {
-            id:         'ce06003a-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('003a'),
             service:    services.rowing
         },
         heartRateBeltInformation: {
-            id:         'ce06003b-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('003b'),
             service:    services.rowing
         },
         additionalEndOfWorkoutSummaryData2: {
-            id:         'ce06003c-43e5-11e4-916c-0800200c9a66', /* multiplexed only */
+            id:        UUID_long_PM5('003c'), /* multiplexed only */
             service:    services.rowing
         },
         forceCurveData: {
-            id:         'ce06003d-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('003d'),
             service:    services.rowing
         },
         multiplexedInformation: {
-            id:         'ce060080-43e5-11e4-916c-0800200c9a66',
+            id:         UUID_long_PM5('0080'),
             service:    services.rowing
         }
     }
@@ -223,6 +230,7 @@ class PM5 {
             console.log(error);
         });
     }
+
 
     /*
      */
