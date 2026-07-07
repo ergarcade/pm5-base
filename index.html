@@ -1,53 +1,56 @@
 <!DOCTYPE html>
-
-<html>
+<html lang="en">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>PM5 Monitor</title>
 
         <script src="js/pm5.js"></script>
         <script src="js/pm5-printables.js"></script>
         <script src="js/app.js"></script>
 
-        <link rel="stylesheet" href="css/style.css" type="text/css" />
+        <link rel="stylesheet" href="css/style.css">
     </head>
 
     <body>
-        <div id="controls">
-            <button id="connect">Connect</button>
-            <button id="toggle-instructions">Show instructions</button>
-            <span id="monitor-information"></span>
-        </div>
+        <header>
+            <h1>PM5 Monitor</h1>
+            <div id="controls">
+                <button id="connect">Connect</button>
+                <button id="toggle-instructions" class="secondary">Show instructions</button>
+                <span id="monitor-information"></span>
+            </div>
+        </header>
 
-        <div id="instruction-text" class="hidden">
-            <p>
-            This application connects to a 
-            <a target="_blank" href="https://www.concept2.com/indoor-rowers/performance-monitors">Concept2
-            PM5</a> monitor over Bluetooth and displays all workout variables.
-            </p>
+        <main>
+            <div id="instruction-text" class="hidden">
+                <p>
+                This application connects to a
+                <a target="_blank" href="https://www.concept2.com/indoor-rowers/performance-monitors">Concept2
+                PM5</a> monitor over Bluetooth and displays all workout variables.
+                </p>
 
-            <h2>Requirements</h2>
-            <ul>
-                <li><a target="_blank" href="https://caniuse.com/#feat=web-bluetooth">Web Bluetooth supported browser</a></li>
-                <li><a target="_blank" href="https://www.concept2.com/indoor-rowers/performance-monitors">PM5</a> attached to a
-                    <a target="_blank" href="https://www.concept2.com">Concept2 ergometer</a></li>
-            </ul>
+                <h2>Requirements</h2>
+                <ul>
+                    <li><a target="_blank" href="https://caniuse.com/#feat=web-bluetooth">Web Bluetooth supported browser</a></li>
+                    <li><a target="_blank" href="https://www.concept2.com/indoor-rowers/performance-monitors">PM5</a> attached to a
+                        <a target="_blank" href="https://www.concept2.com">Concept2 ergometer</a></li>
+                </ul>
 
-            <h2>Usage</h2>
-            <ul>
-                <li>On the PM5, <strong>More Options</strong> -> <strong>Turn Wireless ON</strong></li>
-                <li>Click the <strong>Connect</strong> button above and pair to PM5.</li>
-                <li>Wait for the browser to do it's thing; might take some seconds.</li>
-                <li>Click boxes to highlight them.</li>
-                <li>Setup workout on PM5. Start rowing / skiing / biking. Watch numbers change. Get excited.</li>
-            </ul>
-            <p>
-            Tested on Chrome on Mac OS X. <a target="_blank" href="https://github.com/ergarcade/pm5-base">Source on GitHub</a>.
-            </p>
-        </div>
+                <h2>Usage</h2>
+                <ul>
+                    <li>On the PM5, <strong>More Options</strong> &rarr; <strong>Turn Wireless ON</strong></li>
+                    <li>Click the <strong>Connect</strong> button above and pair to the PM5.</li>
+                    <li>Wait a moment while the browser reads the device characteristics.</li>
+                    <li>Click any field to highlight it.</li>
+                    <li>Set up a workout on the PM5. Start rowing, skiing, or biking. Watch the numbers change.</li>
+                </ul>
+                <p>
+                Tested on Chrome on macOS. <a target="_blank" href="https://github.com/ergarcade/pm5-base">Source on GitHub</a>.
+                </p>
+            </div>
 
-        <div id="notifications">
-        </div>
+            <div id="notifications"></div>
+        </main>
     </body>
-
 </html>

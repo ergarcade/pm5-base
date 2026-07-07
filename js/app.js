@@ -1,5 +1,8 @@
 const toggleClass = (el, className) => el.classList.toggle(className);
 
+const formatCardTitle = type =>
+    type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
 let m;
 
 const cbConnecting = () => {
@@ -33,19 +36,28 @@ const cbMessage = (m) => {
     if (!div) {
         div = document.createElement('div');
         div.id = m.type;
+        div.className = 'card';
+
+        const title = document.createElement('h3');
+        title.className = 'card-title';
+        title.textContent = formatCardTitle(m.type);
+        div.appendChild(title);
+
         document.querySelector('#notifications').appendChild(div);
     }
 
     for (const [k, v] of Object.entries(m.data)) {
-        let s = document.querySelector(`#${m.type} span.${k}`);
+        let s = document.querySelector(`#${m.type} .field-value.${k}`);
         if (!s) {
             const p    = document.createElement('div');
+            p.className = 'field';
+
             const desc = document.createElement('span');
-            desc.className = 'element';
+            desc.className = 'field-label';
             desc.textContent = pm5fields[k].label;
 
             s = document.createElement('span');
-            s.className = `value ${k}`;
+            s.className = `field-value ${k}`;
 
             p.appendChild(desc);
             p.appendChild(s);
