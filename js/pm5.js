@@ -3,74 +3,18 @@
 /*
  * Minimal usage:
  *
- *  function cb_connecting() {
- *       // stuff to do while browser is connecting to PM5
- *  }
+ *  const m = new PM5(
+ *      () => { },          // connecting
+ *      () => { },          // connected
+ *      () => { },          // disconnected
+ *      (event) => { }      // message: event.type, event.data
+ *  );
  *
- *  function cb_connected() {
- *       // do this when browser connects to PM5
- *  }
- *
- *  function cb_disconnected() {
- *      // stuff to do when disconnected from PM5
- *  }
- *
- *  function cb_message(m) {
- *      // message received here.
- *  }
- *
- *  m = new PM5(cb_connecting, cb_connected, cb_disconnected, cb_message);
- *
- *  // Chrome connections to Bluetooth devices can only occur
- *  // on user gesture (https://webbluetoothcg.github.io/web-bluetooth/#ua-bluetooth-address).
- *  document.querySelector('#connect').addEventListener('click', function() {
- *      if (m.connected()) {
- *          m.doDisconnect();
- *      } else {
- *          m.doConnect();
- *      }
+ *  // Bluetooth connections require a user gesture:
+ *  document.querySelector('#connect').addEventListener('click', () => {
+ *      m.connected() ? m.doDisconnect() : m.doConnect();
  *  });
  */
-
-/*
- * From https://developer.mozilla.org/en-US/docs/Web/API/EventTarget
- */
-var EventTarget = function() {
-    this.listeners = {};
-};
-
-EventTarget.prototype.listeners = null;
-EventTarget.prototype.addEventListener = function(type, callback) {
-    if (!(type in this.listeners)) {
-        this.listeners[type] = [];
-    }
-    this.listeners[type].push(callback);
-};
-
-EventTarget.prototype.removeEventListener = function(type, callback) {
-    if (!(type in this.listeners)) {
-        return;
-    }
-    var stack = this.listeners[type];
-    for (var i = 0, l = stack.length; i < l; i++) {
-        if (stack[i] === callback){
-            stack.splice(i, 1);
-            return;
-        }
-    }
-};
-
-EventTarget.prototype.dispatchEvent = function(event) {
-    if (!(event.type in this.listeners)) {
-        return true;
-    }
-    var stack = this.listeners[event.type].slice();
-
-    for (var i = 0, l = stack.length; i < l; i++) {
-        stack[i].call(this, event);
-    }
-    return !event.defaultPrevented;
-};
 
 /*
  * From the Concept2 Performance Monitor Bluetooth Smart Communications
@@ -82,106 +26,80 @@ EventTarget.prototype.dispatchEvent = function(event) {
  * Inspired from https://github.com/GoogleChromeLabs/rowing-monitor
  */
 const services = {
-    discovery:      { id: 'ce060000-43e5-11e4-916c-0800200c9a66' },
-    information:    { id: 'ce060010-43e5-11e4-916c-0800200c9a66' },
-    control:        { id: 'ce060020-43e5-11e4-916c-0800200c9a66' },
-    rowing:         { id: 'ce060030-43e5-11e4-916c-0800200c9a66' }
+    discovery:   { id: 'ce060000-43e5-11e4-916c-0800200c9a66' },
+    information: { id: 'ce060010-43e5-11e4-916c-0800200c9a66' },
+    control:     { id: 'ce060020-43e5-11e4-916c-0800200c9a66' },
+    rowing:      { id: 'ce060030-43e5-11e4-916c-0800200c9a66' }
 };
+
 const characteristics = {
     informationService: {
-        serialNumber: {
-            id:         'ce060012-43e5-11e4-916c-0800200c9a66',
-            service:    services.information
-        },
-        hardwareRevision: {
-            id:         'ce060013-43e5-11e4-916c-0800200c9a66',
-            service:    services.information
-        },
-        firmwareRevision: {
-            id:         'ce060014-43e5-11e4-916c-0800200c9a66',
-            service:    services.information
-        },
-        manufacturerName: {
-            id:         'ce060015-43e5-11e4-916c-0800200c9a66',
-            service:    services.information
-        }
+        serialNumber:     { id: 'ce060012-43e5-11e4-916c-0800200c9a66', service: services.information },
+        hardwareRevision: { id: 'ce060013-43e5-11e4-916c-0800200c9a66', service: services.information },
+        firmwareRevision: { id: 'ce060014-43e5-11e4-916c-0800200c9a66', service: services.information },
+        manufacturerName: { id: 'ce060015-43e5-11e4-916c-0800200c9a66', service: services.information }
     },
     controlService: {
-        transmit: {
-            id:         'ce060021-43e5-11e4-916c-0800200c9a66',
-            service:    services.control
-        },
-        receive: {
-            id:         'ce060022-43e5-11e4-916c-0800200c9a66',
-            service:    services.control
-        }
+        transmit: { id: 'ce060021-43e5-11e4-916c-0800200c9a66', service: services.control },
+        receive:  { id: 'ce060022-43e5-11e4-916c-0800200c9a66', service: services.control }
     },
     rowingService: {
-        generalStatus: {
-            id:         'ce060031-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        additionalStatus: {
-            id:         'ce060032-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        additionalStatus2: {
-            id:         'ce060033-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        generalStatusRate: {
-            id:         'ce060034-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        strokeData: {
-            id:         'ce060035-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        additionalStrokeData: {
-            id:         'ce060036-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        splitIntervalData: {
-            id:         'ce060037-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        additionalSplitIntervalData: {
-            id:         'ce060038-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        endOfWorkoutSummaryData: {
-            id:         'ce060039-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        additionalEndOfWorkoutSummaryData: {
-            id:         'ce06003a-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        heartRateBeltInformation: {
-            id:         'ce06003b-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        additionalEndOfWorkoutSummaryData2: {
-            id:         'ce06003c-43e5-11e4-916c-0800200c9a66', /* multiplexed only */
-            service:    services.rowing
-        },
-        forceCurveData: {
-            id:         'ce06003d-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        },
-        multiplexedInformation: {
-            id:         'ce060080-43e5-11e4-916c-0800200c9a66',
-            service:    services.rowing
-        }
+        generalStatus:                      { id: 'ce060031-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        additionalStatus:                   { id: 'ce060032-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        additionalStatus2:                  { id: 'ce060033-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        generalStatusRate:                  { id: 'ce060034-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        strokeData:                         { id: 'ce060035-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        additionalStrokeData:               { id: 'ce060036-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        splitIntervalData:                  { id: 'ce060037-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        additionalSplitIntervalData:        { id: 'ce060038-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        endOfWorkoutSummaryData:            { id: 'ce060039-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        additionalEndOfWorkoutSummaryData:  { id: 'ce06003a-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        heartRateBeltInformation:           { id: 'ce06003b-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        additionalEndOfWorkoutSummaryData2: { id: 'ce06003c-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        forceCurveData:                     { id: 'ce06003d-43e5-11e4-916c-0800200c9a66', service: services.rowing },
+        multiplexedInformation:             { id: 'ce060080-43e5-11e4-916c-0800200c9a66', service: services.rowing }
     }
 };
 
-class PM5 {
-    /*
-     */
+class PM5 extends EventTarget {
+
+    // Maps event type name -> [rowingService characteristic key, handler method name]
+    static _characteristicHandlers = {
+        'general-status':                 ['generalStatus',                      '_cbGeneralStatus'],
+        'additional-status':              ['additionalStatus',                   '_cbAdditionalStatus'],
+        'additional-status2':             ['additionalStatus2',                  '_cbAdditionalStatus2'],
+        'stroke-data':                    ['strokeData',                         '_cbStrokeData'],
+        'additional-stroke-data':         ['additionalStrokeData',               '_cbAdditionalStrokeData'],
+        'split-interval-data':            ['splitIntervalData',                  '_cbSplitIntervalData'],
+        'additional-split-interval-data': ['additionalSplitIntervalData',        '_cbAdditionalSplitIntervalData'],
+        'workout-end':                    ['endOfWorkoutSummaryData',             '_cbEndOfWorkoutSummaryData'],
+        'additional-workout-end':         ['additionalEndOfWorkoutSummaryData',  '_cbAdditionalEndOfWorkoutSummaryData'],
+        'heart-rate-belt-information':    ['heartRateBeltInformation',           '_cbHeartRateBeltInformation'],
+        'additional-workout-end2':        ['additionalEndOfWorkoutSummaryData2', '_cbAdditionalEndOfWorkoutSummaryData2'],
+        'multiplexed-information':        ['multiplexedInformation',             '_cbMultiplexedInformation'],
+        // force-curve-data omitted: characteristic ce06003d not present in the
+        // rowing service per the spec (NotFoundError in practice).
+    };
+
+    // Maps multiplexed characteristic byte -> handler method name
+    static _multiplexedHandlers = {
+        0x31: '_cbGeneralStatus',
+        0x32: '_cbAdditionalStatus',
+        0x33: '_cbAdditionalStatus2',
+        0x35: '_cbStrokeData',
+        0x36: '_cbAdditionalStrokeData',
+        0x37: '_cbSplitIntervalData',
+        0x38: '_cbAdditionalSplitIntervalData',
+        0x39: '_cbEndOfWorkoutSummaryData',
+        0x3a: '_cbAdditionalEndOfWorkoutSummaryData',
+        0x3b: '_cbHeartRateBeltInformation',
+        0x3c: '_cbAdditionalEndOfWorkoutSummaryData2',
+    };
+
     constructor(cb_connecting, cb_connected, cb_disconnected, cb_message) {
-        this.idObjectMap = new Map();
-        this.eventTarget = new EventTarget();
+        super();
+        this._idObjectMap = new Map();  // service/characteristic id -> BT object cache
+        this._listenerMap = new Map();  // characteristic id -> bound handler (for removal)
 
         this.cb_connecting = cb_connecting;
         this.cb_connected = cb_connected;
@@ -189,226 +107,78 @@ class PM5 {
         this.cb_message = cb_message;
     }
 
-    /*
-     */
-    doConnect() {
-        this.connect()
-        .then(() => {
+    async doConnect() {
+        try {
+            await this.connect();
             this.cb_connecting();
-            return this.addEventListener('multiplexed-information', this.cb_message)
-        })
-        .then(() => {
-            return this.addEventListener('disconnect', this.cb_disconnected);
-        })
-        .then(() => {
+            await this.addEventListener('multiplexed-information', this.cb_message);
+            this.addEventListener('disconnect', this.cb_disconnected);
             this.cb_connected();
-        })
-        .catch(error => {
+        } catch (error) {
             console.log(error);
-        });
+        }
     }
 
-    /*
-     */
-    doDisconnect() {
-        this.removeEventListener('multiplexed-information', this.cb_message)
-        .then(() => {
+    async doDisconnect() {
+        try {
+            await this.removeEventListener('multiplexed-information', this.cb_message);
+            this.removeEventListener('disconnect', this.cb_disconnected);
             this.disconnect();
-            this.removeEventListener('multiplexed-information', this.cb_message)
-        })
-        .then(() => {
-            return this.removeEventListener('disconnect', this.cb_disconnected);
-        })
-        .catch(error => {
+        } catch (error) {
             console.log(error);
-        });
+        }
     }
 
-    /*
-     */
     addEventListener(type, callback) {
-        this.eventTarget.addEventListener(type, callback);
-        switch (type) {
-            case 'general-status':
-                return this._addGeneralStatusListener();
-                break;
-
-            case 'workout-end':
-                return this._addWorkoutEndListener();
-                break;
-
-            case 'multiplexed-information':
-                return this._addMultiplexedInformationListener();
-                break;
-
-            case 'additional-status':
-                return this._addAdditionalStatus();
-                break;
-
-            case 'additional-status2':
-                return this._addAdditionalStatus2();
-                break;
-
-            case 'stroke-data':
-                return this._addStrokeData();
-                break;
-
-            case 'additional-stroke-data':
-                return this._addAdditionalStrokeData();
-                break;
-
-            case 'split-interval-data':
-                return this._addSplitIntervalData();
-                break;
-
-            case 'additional-split-interval-data':
-                return this._addAdditionalSplitIntervalData();
-                break;
-
-            case 'force-curve-data':
-                /*
-                 * XXX We get this back:
-                 *
-                 *   NotFoundError: No Characteristics matching UUID
-                 *   ce06003d-43e5-11e4-916c-0800200c9a66 found in
-                 *   Service with UUID ce060030-43e5-11e4-916c-0800200c9a66.
-                 *
-                 * It _looks_ like this characteristic doesn't appear
-                 * in this service as per the spec. Have to get in touch
-                 * with Concept2 to see if this is the case, and what
-                 * service we need to associate this characteristic with.
-                 */
-                // return this._addForceCurveData();
-                break;
-
-            case 'additional-workout-end':
-                return this._addAdditionalEndOfWorkoutSummaryData();
-                break;
-
-            case 'heart-rate-belt-information':
-                return this._addHeartRateBeltInformation();
-                break;
-
-            case 'additional-workout-end2':
-                return this._addAdditionalEndOfWorkoutSummaryData2();
-                break;
-
-            default:
-                break;
+        super.addEventListener(type, callback);
+        const entry = PM5._characteristicHandlers[type];
+        if (entry) {
+            const [charName, cbName] = entry;
+            return this._setupCharacteristicValueListener(
+                characteristics.rowingService[charName],
+                (e) => this[cbName](e)
+            );
         }
     }
 
-    /*
-     */
     removeEventListener(type, callback) {
-        this.eventTarget.removeEventListener(type, callback);
-
-        /*
-         * We can only modify characteristics if we are connected.
-         */
-        if (!this.connected()) {
-            return Promise.resolve();
+        super.removeEventListener(type, callback);
+        if (!this.connected()) return Promise.resolve();
+        const entry = PM5._characteristicHandlers[type];
+        if (entry) {
+            const [charName] = entry;
+            return this._teardownCharacteristicValueListener(characteristics.rowingService[charName]);
         }
-
-        switch (type) {
-            case 'general-status':
-                return this._removeGeneralStatusListener();
-                break;
-
-            case 'workout-end':
-                return this._removeWorkoutEndListener();
-                break;
-
-            case 'multiplexed-information':
-                return this._removeMultiplexedInformationListener();
-                break;
-
-            case 'additional-status':
-                return this._removeAdditionalStatus();
-                break;
-
-            case 'additional-status2':
-                return this._removeAdditionalStatus2();
-                break;
-
-            case 'stroke-data':
-                return this._removeStrokeData();
-                break;
-
-            case 'additional-stroke-data':
-                return this._removeAdditionalStrokeData();
-                break;
-
-            case 'split-interval-data':
-                return this._removeSplitIntervalData();
-                break;
-
-            case 'additional-split-interval-data':
-                return this._removeAdditionalSplitIntervalData();
-                break;
-
-            case 'force-curve-data':
-                return this._removeForceCurveData();
-                break;
-
-            case 'additional-workout-end':
-                return this._removeAdditionalEndOfWorkoutSummaryData();
-                break;
-
-            case 'heart-rate-belt-information':
-                return this._removeHeartRateBeltInformation();
-                break;
-
-            case 'additional-workout-end2':
-                return this._removeAdditionalEndOfWorkoutSummaryData2();
-                break;
-
-            default:
-                break;
-        }
+        return Promise.resolve();
     }
 
-    /*
-     */
-    connect() {
+    async connect() {
         if (!navigator.bluetooth) {
-            return Promise.reject('Bluetooth not available');
+            throw new Error('Bluetooth not available');
         }
 
-        return navigator.bluetooth.requestDevice({
-            filters: [{
-                services: [
-                    services.discovery.id
-                ]
-            }],
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: [services.discovery.id] }],
             optionalServices: [
                 services.information.id,
                 services.control.id,
                 services.rowing.id
             ]
-        })
-        .then(device => {
-            this.device = device;
-            this.device.addEventListener('gattserverdisconnected', _gattDisconnect => {
-                console.log('gattserverdisconnected');
-                this.device.removeEventListener('gattserverdisconnected', _gattDisconnect);
-                this.idObjectMap.clear();
-                this.eventTarget.dispatchEvent({ type: 'disconnect'});
-            });
-            return device.gatt.connect();
-        })
-        .then(server => {
-            this.server = server;
-            return Promise.resolve();
-        })
-        .catch(error => {
-            console.log(error);
-            return Promise.reject(error);
         });
+
+        this.device = device;
+
+        const onGattDisconnect = () => {
+            this.device.removeEventListener('gattserverdisconnected', onGattDisconnect);
+            this._idObjectMap.clear();
+            this._listenerMap.clear();
+            this.dispatchEvent(new Event('disconnect'));
+        };
+        this.device.addEventListener('gattserverdisconnected', onGattDisconnect);
+
+        this.server = await device.gatt.connect();
     }
 
-    /*
-     */
     disconnect() {
         if (!this.connected()) {
             console.log("disconnect: wasn't connected");
@@ -417,59 +187,97 @@ class PM5 {
         this.device.gatt.disconnect();
     }
 
-    /*
-     */
     connected() {
-        return this.device && this.device.gatt && this.device.gatt.connected;
+        return this.device?.gatt?.connected ?? false;
     }
 
-    /*
-     */
-    _getService(service) {
-        const serviceObject = this.idObjectMap.get(service.id);
-
-        if (serviceObject) {
-            return Promise.resolve(serviceObject);
+    async _getService(service) {
+        if (this._idObjectMap.has(service.id)) {
+            return this._idObjectMap.get(service.id);
         }
-
-        return this.server.getPrimaryService(service.id)
-            .then(s => {
-                this.idObjectMap.set(service.id, s);
-                return Promise.resolve(s);
-            })
-            .catch(error => {
-                console.log('getPrimaryService(' + service.id + ')');
-                return Promise.reject(error);
-            });
+        try {
+            const s = await this.server.getPrimaryService(service.id);
+            this._idObjectMap.set(service.id, s);
+            return s;
+        } catch (error) {
+            console.log(`getPrimaryService(${service.id}) failed`);
+            throw error;
+        }
     }
 
-    /*
-     * 0x003d is not multiplexed.
-     */
-    _cbForceCurveData(monitor, e) {
+    async _getCharacteristic(characteristic) {
+        if (this._idObjectMap.has(characteristic.id)) {
+            return this._idObjectMap.get(characteristic.id);
+        }
+        try {
+            const service = await this._getService(characteristic.service);
+            const c = await service.getCharacteristic(characteristic.id);
+            this._idObjectMap.set(characteristic.id, c);
+            return c;
+        } catch (error) {
+            console.log(`getCharacteristic(${characteristic.id}) failed: ${error}`);
+            throw error;
+        }
+    }
+
+    async _setupCharacteristicValueListener(characteristic, handler) {
+        try {
+            const c = await this._getCharacteristic(characteristic);
+            await c.startNotifications();
+            this._listenerMap.set(characteristic.id, handler);
+            c.addEventListener('characteristicvaluechanged', handler);
+        } catch (error) {
+            console.log(`_setupCharacteristicValueListener(${characteristic.id}) failed: ${error}`);
+            throw error;
+        }
+    }
+
+    async _teardownCharacteristicValueListener(characteristic) {
+        try {
+            const c = await this._getCharacteristic(characteristic);
+            await c.stopNotifications();
+            const handler = this._listenerMap.get(characteristic.id);
+            if (handler) {
+                c.removeEventListener('characteristicvaluechanged', handler);
+                this._listenerMap.delete(characteristic.id);
+            }
+        } catch (error) {
+            console.log(`_teardownCharacteristicValueListener(${characteristic.id}) failed: ${error}`);
+            throw error;
+        }
+    }
+
+    _dispatch(type, e, data) {
+        const event = new Event(type);
+        event.source = this;
+        event.raw = e.target.value;
+        event.data = data;
+        this.dispatchEvent(event);
+    }
+
+    _cbMultiplexedInformation(e) {
+        const id = e.target.value.getUint8(0);
+        const handlerName = PM5._multiplexedHandlers[id];
+        if (handlerName) {
+            this[handlerName](e, true);
+        } else {
+            console.log(`unhandled characteristic 0x${id.toString(16)}`);
+        }
+    }
+
+    // 0x003d is not multiplexed
+    _cbForceCurveData(e) {
         const v = new Uint8Array(e.target.value.buffer);
         const numCharacteristics = (v[0] >> 4) & 0x0f;
         const numDataPoints = v[0] & 0x0f;
         const sequenceNumber = v[1];
-        let data = [];
+        const data = [];
 
-        for (let i = 2; i <= numDataPoints*2; i += 2) {
-            data.push(v[i] + (v[i+1] << 8));
+        for (let i = 2; i <= numDataPoints * 2; i += 2) {
+            data.push(v[i] + (v[i + 1] << 8));
         }
 
-        const event = {
-            type: 'force-curve-data',
-            source: monitor,
-            raw: e.target.value,
-            data: {
-                numCharacteristics: numCharacteristics,
-                numDataPoints: numDataPoints,
-                sequeneNumber: sequenceNumber,
-                data: data
-            }
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+        this._dispatch('force-curve-data', e, { numCharacteristics, numDataPoints, sequenceNumber, data });
     }
 
     /*
@@ -491,18 +299,18 @@ class PM5 {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
 
-        let data = {
-            elapsedTime:        (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01,
-            distance:           (v[o+3] + (v[o+4] << 8) + (v[o+5] << 16)) * 0.1,
-            workoutType:        v[o+6],
-            intervalType:       v[o+7],
-            workoutState:       v[o+8],
-            rowingState:        v[o+9],
-            strokeState:        v[o+10],
-            totalWorkDistance:  (v[o+11] + (v[o+12] << 8) + (v[o+13] << 16)),
-            workoutDuration:    (v[o+14] + (v[o+15] << 8) + (v[o+16] << 16)),
-            workoutDurationType:v[o+17],
-            dragFactor:         v[o+18]
+        const data = {
+            elapsedTime:         (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01,
+            distance:            (v[o+3] + (v[o+4] << 8) + (v[o+5] << 16)) * 0.1,
+            workoutType:         v[o+6],
+            intervalType:        v[o+7],
+            workoutState:        v[o+8],
+            rowingState:         v[o+9],
+            strokeState:         v[o+10],
+            totalWorkDistance:   (v[o+11] + (v[o+12] << 8) + (v[o+13] << 16)),
+            workoutDuration:     (v[o+14] + (v[o+15] << 8) + (v[o+16] << 16)),
+            workoutDurationType: v[o+17],
+            dragFactor:          v[o+18]
         };
 
         /*
@@ -510,10 +318,10 @@ class PM5 {
          * "Workout Duration Lo (if time, 0.01 sec lsb)"
          *
          * enum DurationTypes {
-         *      CSAFE_TIME_DURATION = 0,
+         *      CSAFE_TIME_DURATION     = 0,
          *      CSAFE_CALORIES_DURATION = 0x40,
          *      CSAFE_DISTANCE_DURATION = 0x80,
-         *      CSAFE_WATTS_DURATION = 0xc0
+         *      CSAFE_WATTS_DURATION    = 0xc0
          * }
          */
         if (data.workoutDurationType == 0x0) {
@@ -523,63 +331,56 @@ class PM5 {
         return data;
     }
 
-    /*
-     */
-    _cbGeneralStatus(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'general-status',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractGeneralStatus(e, multiplexed)
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+    _cbGeneralStatus(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'general-status',
+            e,
+            this._extractGeneralStatus(e, multiplexed)
+        );
     }
 
     /*
      * CSAFE equivalent commands:
      *
-     * elapsedTime      = N/A
-     * speed            = CSAFE_GETSPEED
-     * strokeRate       = CSAFE_PM_GET_STROKESTATE
-     * heartRate        = CSAFE_PM_GET_AVG_HEARTRATE
-     * currentPace      = N/A
-     * averagePace      = CSAFE_PM_GET_TOTAL_AVG_500MPACE
-     * restDistance     = CSAFE_PM_GET_RESTDISTANCE
-     * restTime         = CSAFE_PM_GET_RESTTIME
+     * elapsedTime  = N/A
+     * speed        = CSAFE_GETSPEED
+     * strokeRate   = CSAFE_PM_GET_STROKESTATE
+     * heartRate    = CSAFE_PM_GET_AVG_HEARTRATE
+     * currentPace  = N/A
+     * averagePace  = CSAFE_PM_GET_TOTAL_AVG_500MPACE
+     * restDistance = CSAFE_PM_GET_RESTDISTANCE
+     * restTime     = CSAFE_PM_GET_RESTTIME
      */
     _extractAdditionalStatus(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
         const r = {
-            elapsedTime:        (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01,
-            speed:              (v[o+3] + (v[o+4] << 8)) * 0.001,
-            strokeRate:         v[o+5],
-            heartRate:          v[o+6],
-            currentPace:        (v[o+7] + (v[o+8] << 8)) * 0.01,
-            averagePace:        (v[o+9] + (v[o+10] << 8)) * 0.01,
-            restDistance:       (v[o+11] + (v[o+12] << 8)),
-            restTime:           (v[o+13] + (v[o+14] << 8) + (v[o+15] << 16)) * 0.01
+            elapsedTime:  (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01,
+            speed:        (v[o+3] + (v[o+4] << 8)) * 0.001,
+            strokeRate:   v[o+5],
+            heartRate:    v[o+6],
+            currentPace:  (v[o+7] + (v[o+8] << 8)) * 0.01,
+            averagePace:  (v[o+9] + (v[o+10] << 8)) * 0.01,
+            restDistance: (v[o+11] + (v[o+12] << 8)),
+            restTime:     (v[o+13] + (v[o+14] << 8) + (v[o+15] << 16)) * 0.01,
         };
 
         if (multiplexed) {
-            r.averagePower = v[o+16] + (v[o+17] << 8);
+            r.averagePower   = v[o+16] + (v[o+17] << 8);
+            r.ergMachineType = v[o+18];
+        } else {
+            r.ergMachineType = v[o+16];
         }
 
         return r;
     }
 
-    /*
-     */
-    _cbAdditionalStatus(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'additional-status',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractAdditionalStatus(e, multiplexed)
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+    _cbAdditionalStatus(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'additional-status',
+            e,
+            this._extractAdditionalStatus(e, multiplexed)
+        );
     }
 
     /*
@@ -598,43 +399,34 @@ class PM5 {
     _extractAdditionalStatus2(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
-        const r = {};
 
-        if (multiplexed) {
-            r.elapsedTime =           (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01;
-            r.intervalCount =         v[o+3];
-            r.totalCalories =         (v[o+4] + (v[o+5] << 8));
-            r.splitAveragePace =      (v[o+6] + (v[o+7] << 8)) * 0.01;
-            r.splitAveragePower =     (v[o+8] + (v[o+9] << 8));
-            r.splitAverageCalories =  (v[o+10] + (v[o+11] << 8));
-            r.lastSplitTime =         (v[o+12] + (v[o+13] << 8) + (v[o+14] << 16));
-            r.lastSplitDistance =     (v[o+15] + (v[o+16] << 8) + (v[o+17] << 16));
-        } else {
-            r.elapsedTime =           (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01;
-            r.intervalCount =         v[o+3];
-            r.averagePower =          (v[o+4] + (v[o+5] << 8));
-            r.totalCalories =         (v[o+6] + (v[o+7] << 8));
-            r.splitAveragePace =      (v[o+8] + (v[o+9] << 8)) * 0.01;
-            r.splitAveragePower =     (v[o+10] + (v[o+11] << 8));
-            r.splitAverageCalories =  (v[o+12] + (v[o+13] << 8));
-            r.lastSplitTime =         (v[o+14] + (v[o+15] << 8) + (v[o+16] << 16));
-            r.lastSplitDistance =     (v[o+17] + (v[o+18] << 8) + (v[o+19] << 16));
+        const r = {
+            elapsedTime:   (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01,
+            intervalCount: v[o+3],
         };
+
+        if (!multiplexed) {
+            r.averagePower = (v[o+4] + (v[o+5] << 8));
+        }
+
+        // Non-multiplexed has averagePower at o+4..5, shifting subsequent fields by 2 bytes
+        const p = multiplexed ? 0 : 2;
+        r.totalCalories       = (v[o+4+p]  + (v[o+5+p]  << 8));
+        r.splitAveragePace    = (v[o+6+p]  + (v[o+7+p]  << 8)) * 0.01;
+        r.splitAveragePower   = (v[o+8+p]  + (v[o+9+p]  << 8));
+        r.splitAverageCalories= (v[o+10+p] + (v[o+11+p] << 8));
+        r.lastSplitTime       = (v[o+12+p] + (v[o+13+p] << 8) + (v[o+14+p] << 16));
+        r.lastSplitDistance   = (v[o+15+p] + (v[o+16+p] << 8) + (v[o+17+p] << 16));
 
         return r;
     }
 
-    /*
-     */
-    _cbAdditionalStatus2(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'additional-status2',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractAdditionalStatus2(e, multiplexed)
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+    _cbAdditionalStatus2(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'additional-status2',
+            e,
+            this._extractAdditionalStatus2(e, multiplexed)
+        );
     }
 
     /*
@@ -654,151 +446,106 @@ class PM5 {
     _extractStrokeData(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
-        const r = {};
+
+        const r = {
+            elapsedTime:       (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01,
+            distance:          (v[o+3] + (v[o+4] << 8) + (v[o+5] << 16)) * 0.1,
+            driveLength:       v[o+6] * 0.01,
+            driveTime:         v[o+7] * 0.01,
+            strokeRecoveryTime:(v[o+8] + (v[o+9] << 8)) * 0.01,
+            strokeDistance:    (v[o+10] + (v[o+11] << 8)) * 0.01,
+            peakDriveForce:    (v[o+12] + (v[o+13] << 8)) * 0.1,   /* pounds */
+            averageDriveForce: (v[o+14] + (v[o+15] << 8)) * 0.1,   /* pounds */
+        };
 
         if (multiplexed) {
-            r.elapsedTime =           (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01;
-            r.distance =              (v[o+3] + (v[o+4] << 8) + (v[o+5] << 16)) * 0.1;
-            r.driveLength =           v[o+6] * 0.01;
-            r.driveTime =             v[o+7] * 0.01;
-            r.strokeRecoveryTime =    (v[o+8] + (v[o+9] << 8)) * 0.01;
-            r.strokeDistance =        (v[o+10] + (v[o+11] << 8)) * 0.01;
-            r.peakDriveForce =        (v[o+12] + (v[o+13] << 8)) * 0.1;   /* XXX pounds */
-            r.averageDriveForce =     (v[o+14] + (v[o+15] << 8)) * 0.1;   /* XXX pounds */
-            r.strokeCount =           (v[o+16] + (v[o+17] << 8));
+            r.strokeCount = (v[o+16] + (v[o+17] << 8));
         } else {
-            r.elapsedTime =           (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01;
-            r.distance =              (v[o+3] + (v[o+4] << 8) + (v[o+5] << 16)) * 0.1;
-            r.driveLength =           v[o+6] * 0.01;
-            r.driveTime =             v[o+7] * 0.01;
-            r.strokeRecoveryTime =    (v[o+8] + (v[o+9] << 8)) * 0.01;
-            r.strokeDistance =        (v[o+10] + (v[o+11] << 8)) * 0.01;
-            r.peakDriveForce =        (v[o+12] + (v[o+13] << 8)) * 0.1;   /* XXX pounds */
-            r.averageDriveForce =     (v[o+14] + (v[o+15] << 8)) * 0.1;   /* XXX pounds */
-            r.workPerStroke =         (v[o+16] + (v[o+17] << 8));
-            r.strokeCount =           (v[o+18] + (v[o+19] << 8));
+            r.workPerStroke = (v[o+16] + (v[o+17] << 8));
+            r.strokeCount   = (v[o+18] + (v[o+19] << 8));
         }
 
         return r;
     }
 
-    /*
-     */
-    _cbStrokeData(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'stroke-data',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractStrokeData(e, multiplexed)
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+    _cbStrokeData(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'stroke-data',
+            e,
+            this._extractStrokeData(e, multiplexed)
+        );
     }
 
     /*
      * CSAFE equivalent commands:
      *
-     * elapsedTime              = N/A
-     * strokePower              = CSAFE_PM_GET_STROKE_POWER
-     * strokeCalories           = CSAFE_PM_GET_STROKE_CALORICBURNRATE
-     * strokeCount              = CSAFE_PM_GET_STROKESTATS
-     * projectedWorkTime        = N/A
-     * projectedWorkDistance    = N/A
-     * workPerStroke            = N/A
+     * elapsedTime          = N/A
+     * strokePower          = CSAFE_PM_GET_STROKE_POWER
+     * strokeCalories       = CSAFE_PM_GET_STROKE_CALORICBURNRATE
+     * strokeCount          = CSAFE_PM_GET_STROKESTATS
+     * projectedWorkTime    = N/A
+     * projectedWorkDistance= N/A
+     * workPerStroke        = N/A
      */
     _extractAdditionalStrokeData(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
-        const r = {};
+
+        const r = {
+            elapsedTime:          (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01,
+            strokePower:          (v[o+3] + (v[o+4] << 8)),
+            strokeCalories:       (v[o+5] + (v[o+6] << 8)),
+            strokeCount:          (v[o+7] + (v[o+8] << 8)),
+            projectedWorkTime:    (v[o+9] + (v[o+10] << 8) + (v[o+11] << 16)),
+            projectedWorkDistance:(v[o+12] + (v[o+13] << 8) + (v[o+14] << 16)),
+        };
 
         if (multiplexed) {
-            r.elapsedTime =           (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01;
-            r.strokePower =           (v[o+3] + (v[o+4] << 8));
-            r.strokeCalories =        (v[o+5] + (v[o+6] << 8));
-            r.strokeCount =           (v[o+7] + (v[o+8] << 8));
-            r.projectedWorkTime =     (v[o+9] + (v[o+10] << 8) + (v[o+11] << 16));
-            r.projectedWorkDistance = (v[o+12] + (v[o+13] << 8) + (v[o+14] << 16));
-            r.workPerStroke =         (v[o+15] + (v[o+16] << 8));
+            r.workPerStroke = (v[o+15] + (v[o+16] << 8));
         } else {
-            r.elapsedTime =           (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01;
-            r.strokePower =           (v[o+3] + (v[o+4] << 8));
-            r.strokeCalories =        (v[o+5] + (v[o+6] << 8));
-            r.strokeCount =           (v[o+7] + (v[o+8] << 8));
-            r.projectedWorkTime =     (v[o+9] + (v[o+10] << 8) + (v[o+11] << 16));
-            r.projectedWorkDistance = (v[o+12] + (v[o+13] << 8) + (v[o+14] << 16));
+            r.projectedWorkOther = (v[o+15] + (v[o+16] << 8) + (v[o+17] << 16));
         }
 
         return r;
     }
 
-    /*
-     */
-    _cbAdditionalStrokeData(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'additional-stroke-data',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractAdditionalStrokeData(e, multiplexed)
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+    _cbAdditionalStrokeData(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'additional-stroke-data',
+            e,
+            this._extractAdditionalStrokeData(e, multiplexed)
+        );
     }
 
     /*
-     * CSAFE equivalent commands:
-     *
-     * elapsedTime              = N/A
-     * distance                 = N/A
-     * splitIntervalTime        = N/A
-     * splitIntervalDistance    = N/A
-     * intervalRestTime         = N/A
-     * intervalRestDistance     = N/A
-     * splitIntervalType        = N/A
-     * splitIntervalNumber      = N/A
+     * CSAFE equivalent commands: all N/A
      */
     _extractSplitIntervalData(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
 
         return {
-            elapsedTime:            (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01,
-            distance:               (v[o+3] + (v[o+4] << 8) + (v[o+5] << 16)) * 0.1,
-            splitIntervalTime:      (v[o+6] + (v[o+7] << 8) + (v[o+8] << 16)) * 0.1,
-            splitIntervalDistance:  (v[o+9] + (v[o+10] << 8) + (v[o+11] << 16)),
-            intervalRestTime:       v[o+12] + (v[o+13] << 8),
-            intervalRestDistance:   v[o+14] + (v[o+15] << 8),
-            splitIntervalType:      v[o+16],
-            splitIntervalNumber:    v[o+17]
+            elapsedTime:           (v[o+0] + (v[o+1] << 8) + (v[o+2] << 16)) * 0.01,
+            distance:              (v[o+3] + (v[o+4] << 8) + (v[o+5] << 16)) * 0.1,
+            splitIntervalTime:     (v[o+6] + (v[o+7] << 8) + (v[o+8] << 16)) * 0.1,
+            splitIntervalDistance: (v[o+9] + (v[o+10] << 8) + (v[o+11] << 16)),
+            intervalRestTime:      v[o+12] + (v[o+13] << 8),
+            intervalRestDistance:  v[o+14] + (v[o+15] << 8),
+            splitIntervalType:     v[o+16],
+            splitIntervalNumber:   v[o+17]
         };
     }
 
-    /*
-     */
-    _cbSplitIntervalData(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'split-interval-data',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractSplitIntervalData(e, multiplexed)
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+    _cbSplitIntervalData(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'split-interval-data',
+            e,
+            this._extractSplitIntervalData(e, multiplexed)
+        );
     }
 
     /*
-     * CSAFE equivalent commands:
-     *
-     * elapsedTime                      = N/A
-     * splitIntervalAverageStrokeRate   = N/A
-     * splitIntervalWorkHeartrate       = N/A
-     * splitIntervalRestHeartRate       = N/A
-     * splitIntervalAveragePace         = N/A
-     * splitIntervalTotalCalories       = N/A
-     * splitIntervalAverageCalories     = N/A
-     * splitIntervalSpeed               = N/A
-     * splitIntervalPower               = N/A
-     * splitAverageDragFactor           = N/A
-     * splitIntervalNumber              = N/A
+     * CSAFE equivalent commands: all N/A
      */
     _extractAdditionalSplitIntervalData(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
@@ -819,53 +566,35 @@ class PM5 {
         };
     }
 
-    /*
-     */
-    _cbAdditionalSplitIntervalData(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'additional-split-interval-data',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractAdditionalSplitIntervalData(e, multiplexed)
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+    _cbAdditionalSplitIntervalData(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'additional-split-interval-data',
+            e,
+            this._extractAdditionalSplitIntervalData(e, multiplexed)
+        );
     }
 
     /*
-     * CSAFE equivalent commands:
-     *
-     * logEntryDate         = N/A
-     * logEntryTime         = N/A
-     * timeElapsed          = N/A
-     * distance             = N/A
-     * avgStrokeRate        = N/A
-     * endingHeartRate      = N/A
-     * averageHeartRate     = N/A
-     * minHeartRate         = N/A
-     * maxHeartRate         = N/A
-     * dragFactorAverage    = N/A
-     * recoveryHeartRate    = N/A
-     * workoutType          = N/A
-     * averagePace          = N/A
+     * CSAFE equivalent commands: all N/A
      */
     _extractEndOfWorkoutSummary(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
-        const r = {};
 
-        r.logEntryDate =      (v[o+0] + (v[o+1] << 8));
-        r.logEntryTime =      (v[o+2] + (v[o+3] << 8));
-        r.timeElapsed =       (v[o+4] + (v[o+5] << 8) + (v[o+6] << 16)) * 0.01;
-        r.distance =          (v[o+7] + (v[o+8] << 8) + (v[o+9] << 16)) * 0.1;
-        r.avgStrokeRate =     v[o+10];
-        r.endingHeartRate =   v[o+11];
-        r.averageHeartRate =  v[o+12];
-        r.minHeartRate =      v[o+13];
-        r.maxHeartRate =      v[o+14];
-        r.dragFactorAverage = v[o+15];
-        r.recoveryHeartRate = v[o+16];
-        r.workoutType =       v[o+17];
+        const r = {
+            logEntryDate:      (v[o+0] + (v[o+1] << 8)),
+            logEntryTime:      (v[o+2] + (v[o+3] << 8)),
+            timeElapsed:       (v[o+4] + (v[o+5] << 8) + (v[o+6] << 16)) * 0.01,
+            distance:          (v[o+7] + (v[o+8] << 8) + (v[o+9] << 16)) * 0.1,
+            avgStrokeRate:     v[o+10],
+            endingHeartRate:   v[o+11],
+            averageHeartRate:  v[o+12],
+            minHeartRate:      v[o+13],
+            maxHeartRate:      v[o+14],
+            dragFactorAverage: v[o+15],
+            recoveryHeartRate: v[o+16],
+            workoutType:       v[o+17],
+        };
 
         if (!multiplexed) {
             r.averagePace = (v[o+18] + (v[o+19] << 8)) * 0.1;
@@ -874,435 +603,121 @@ class PM5 {
         return r;
     }
 
-    /*
-     */
-    _cbEndOfWorkoutSummaryData(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'workout-end',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractEndOfWorkoutSummary(e, multiplexed)
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+    _cbEndOfWorkoutSummaryData(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'workout-end',
+            e,
+            this._extractEndOfWorkoutSummary(e, multiplexed)
+        );
     }
 
-    /*
-     */
     _extractAdditionalEndOfWorkoutSummary(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
-        const r = {};
 
-        r.logEntryDate =        (v[o+0] + (v[o+1] << 8));
-        r.logEntryTime =        (v[o+2] + (v[o+3] << 8));
+        const r = {
+            logEntryDate:      (v[o+0] + (v[o+1] << 8)),
+            logEntryTime:      (v[o+2] + (v[o+3] << 8)),
+        };
 
         if (!multiplexed) {
-            r.splitIntervalType =   v[o+4];
+            r.splitIntervalType = v[o+4];
         }
 
-        r.splitIntervalSize =   (v[o+5] + (v[o+6] << 8));
-        r.splitIntervalCount =  v[o+7];
-        r.totalCalories =       (v[o+8] + (v[o+9] << 8));
-        r.watts =               (v[o+10] + (v[o+11] << 8));
-        r.totalRestDistance =   (v[o+12] + (v[o+13] << 8) + (v[o+14] << 16));
-        r.intervalRestTime =    (v[o+15] + (v[o+16] << 8));
-        r.averageCalories =     (v[o+17] + (v[o+18] << 8));
+        // Non-mux has splitIntervalType at o+4 (1 byte), shifting Size to o+5.
+        // Multiplexed omits that byte, so Size starts at o+4.
+        const s = multiplexed ? o+4 : o+5;
+        r.splitIntervalSize  = (v[s+0] + (v[s+1] << 8));
+        r.splitIntervalCount = v[s+2];
+        r.totalCalories      = (v[s+3] + (v[s+4] << 8));
+        r.watts              = (v[s+5] + (v[s+6] << 8));
+        r.totalRestDistance  = (v[s+7] + (v[s+8] << 8) + (v[s+9] << 16));
+        r.intervalRestTime   = (v[s+10] + (v[s+11] << 8));
+        r.averageCalories    = (v[s+12] + (v[s+13] << 8));
 
         return r;
     }
 
-    /*
-     */
-    _cbAdditionalEndOfWorkoutSummaryData(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'additional-workout-end',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractAdditionalEndOfWorkoutSummary(e, multiplexed)
-        };
-
-        monitor.eventTarget.dispatchEvent(event);
+    _cbAdditionalEndOfWorkoutSummaryData(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'additional-workout-end',
+            e,
+            this._extractAdditionalEndOfWorkoutSummary(e, multiplexed)
+        );
     }
 
-    /*
-     */
     _extractHeartRateBeltInformation(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
-        const r = {};
 
-        r.manufacturerId =  v[o+0];
-        r.deviceType =      v[o+1];
-        r.beltId =          v[o+2] + (v[o+3] << 8) + (v[o+4] << 16) + (v[o+5] << 24);
-
-        return r;
-    }
-
-    /*
-     */
-    _cbHeartRateBeltInformation(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'heart-rate-belt-information',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractHeartRateBeltInformation(e, multiplexed)
+        return {
+            manufacturerId: v[o+0],
+            deviceType:     v[o+1],
+            beltId:         v[o+2] + (v[o+3] << 8) + (v[o+4] << 16) + (v[o+5] << 24)
         };
-
-        monitor.eventTarget.dispatchEvent(event);
     }
 
-    /*
-     */
+    _cbHeartRateBeltInformation(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'heart-rate-belt-information',
+            e,
+            this._extractHeartRateBeltInformation(e, multiplexed)
+        );
+    }
+
     _extractAdditionalEndOfWorkoutSummaryData2(e, multiplexed = false) {
         const o = multiplexed ? 1 : 0;
         const v = new Uint8Array(e.target.value.buffer);
-        const r = {};
 
-        r.logEntryDate =      (v[o+0] + (v[o+1] << 8));
-        r.logEntryTime =      (v[o+2] + (v[o+3] << 8));
-        r.averagePace =       (v[o+4] + (v[o+5] << 8));
-        r.gameIdentifierWorkoutVerified = v[o+6];
-        r.gameScore =         (v[o+7] + (v[o+8] << 8));
-        r.ergMachineType =    v[o+9];
-
-        return r;
-    }
-
-    /*
-     */
-    _cbAdditionalEndOfWorkoutSummaryData2(monitor, e, multiplexed = false) {
-        const event = {
-            type: multiplexed ? 'multiplexed-information' : 'additional-workout-end2',
-            source: monitor,
-            raw: e.target.value,
-            data: monitor._extractAdditionalEndOfWorkoutSummaryData2(e, multiplexed)
+        return {
+            logEntryDate:                  (v[o+0] + (v[o+1] << 8)),
+            logEntryTime:                  (v[o+2] + (v[o+3] << 8)),
+            averagePace:                   (v[o+4] + (v[o+5] << 8)),
+            gameIdentifierWorkoutVerified: v[o+6],
+            gameScore:                     (v[o+7] + (v[o+8] << 8)),
+            ergMachineType:                v[o+9],
+            totalWattMinutes:              (v[o+10] + (v[o+11] << 8) + (v[o+12] << 16))
         };
-
-        monitor.eventTarget.dispatchEvent(event);
     }
 
-    /*
-     */
-    _cbMultiplexedInformation(monitor, e) {
-        const characteristic = e.target.value.getUint8();
-
-        /* XXX make this a jump table */
-        switch (characteristic) {
-            case 0x31: monitor._cbGeneralStatus(monitor, e, true); break;
-            case 0x32: monitor._cbAdditionalStatus(monitor, e, true); break;
-            case 0x33: monitor._cbAdditionalStatus2(monitor, e, true); break;
-            case 0x35: monitor._cbStrokeData(monitor, e, true); break;
-            case 0x36: monitor._cbAdditionalStrokeData(monitor, e, true); break;
-            case 0x37: monitor._cbSplitIntervalData(monitor, e, true); break;
-            case 0x38: monitor._cbAdditionalSplitIntervalData(monitor, e, true); break;
-            case 0x39: monitor._cbEndOfWorkoutSummaryData(monitor, e, true); break;
-            case 0x3a: monitor._cbAdditionalEndOfWorkoutSummaryData(monitor, e, true); break;
-            case 0x3b: monitor._cbHeartRateBeltInformation(monitor, e, true); break;
-            case 0x3c: monitor._cbAdditionalEndOfWorkoutSummaryData2(monitor, e, true); break;
-            default:
-                console.log('unhandled characteristic ' + characteristic.toString(16));
-                break;
-        }
-    }
-
-    /*
-     */
-    _getCharacteristic(characteristic) {
-        const characteristicObject = this.idObjectMap.get(characteristic.id);
-
-        if (characteristicObject) {
-            return Promise.resolve(characteristicObject);
-        }
-
-        return this._getService(characteristic.service)
-            .then(service => {
-                return service.getCharacteristic(characteristic.id);
-            })
-            .then(c => {
-                this.idObjectMap.set(characteristic.id, c);
-                return Promise.resolve(c);
-            })
-            .catch(error => {
-                console.log('getCharacteristic(' + characteristic.id + ') failed: ' + error);
-                return Promise.reject(error);
-            });
-    }
-
-    /*
-     */
-    _setupCharacteristicValueListener(characteristic, callback) {
-        const monitor = this;
-
-        return this._getCharacteristic(characteristic)
-            .then(c => {
-                return c.startNotifications();
-            })
-            .then(c => {
-                c.addEventListener('characteristicvaluechanged', e => {
-                    callback(monitor, e);
-                });
-                return Promise.resolve();
-            })
-            .catch(error => {
-                console.log('_setupCharacteristicValueListener(' + characteristic.id + ') failed: ' + error);
-                return Promise.reject(error);
-            });
-    }
-
-    /*
-     */
-    _teardownCharacteristicValueListener(characteristic, callback) {
-        const monitor = this;
-
-        return this._getCharacteristic(characteristic)
-            .then(c => {
-                return c.stopNotifications();
-            })
-            .then(c => {
-                c.removeEventListener('characteristicvaluechanged', e => {
-                    callback(monitor, e);
-                });
-                return Promise.resolve();
-            })
-            .catch(error => {
-                console.log('_teardownCharacteristicValueListener(' + characteristic.id + ') failed: ' + error);
-                return Promise.reject(error);
-            });
-    }
-
-    /*
-     */
-    _addWorkoutEndListener() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.endOfWorkoutSummaryData, this._cbEndOfWorkoutSummaryData
+    _cbAdditionalEndOfWorkoutSummaryData2(e, multiplexed = false) {
+        this._dispatch(
+            multiplexed ? 'multiplexed-information' : 'additional-workout-end2',
+            e,
+            this._extractAdditionalEndOfWorkoutSummaryData2(e, multiplexed)
         );
     }
 
-    /*
-     */
-    _removeWorkoutEndListener() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.endOfWorkoutSummaryData, this._cbEndOfWorkoutSummaryData
-        );
-    }
-
-    /*
-     */
-    _addGeneralStatusListener() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.generalStatus, this._cbGeneralStatus
-        );
-    }
-
-    /*
-     */
-    _removeGeneralStatusListener() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.generalStatus, this._cbGeneralStatus
-        );
-    }
-
-    /*
-     */
-    _addMultiplexedInformationListener() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.multiplexedInformation, this._cbMultiplexedInformation
-        );
-    }
-
-    /*
-     */
-    _removeMultiplexedInformationListener() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.multiplexedInformation, this._cbMultiplexedInformation
-        );
-    }
-
-    _addAdditionalStatus() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.additionalStatus, this._cbAdditionalStatus
-        );
-    }
-
-    _removeAdditionalStatus() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.additionalStatus, this._cbAdditionalStatus
-        );
-    }
-
-    _addAdditionalStatus2() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.additionalStatus2, this._cbAdditionalStatus2
-        );
-    }
-
-    _removeAdditionalStatus2() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.additionalStatus2, this._cbAdditionalStatus2
-        );
-    }
-
-    _addStrokeData() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.strokeData, this._cbStrokeData
-        );
-    }
-
-    _removeStrokeData() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.strokeData, this._cbStrokeData
-        );
-    }
-
-    _addAdditionalStrokeData() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.additionalStrokeData, this._cbAdditionalStrokeData
-        );
-    }
-
-    _removeAdditionalStrokeData() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.additionalStrokeData, this._cbAdditionalStrokeData
-        );
-    }
-
-    _addSplitIntervalData() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.splitIntervalData, this._cbSplitIntervalData
-        );
-    }
-
-    _removeSplitIntervalData() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.splitIntervalData, this._cbSplitIntervalData
-        );
-    }
-
-    _addAdditionalSplitIntervalData() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.additionalSplitIntervalData, this._cbAdditionalSplitIntervalData
-        );
-    }
-
-    _removeAdditionalSplitIntervalData() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.additionalSplitIntervalData, this._cbAdditionalSplitIntervalData
-        );
-    }
-
-    _addForceCurveData() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.forceCurveData, this._cbForceCurveData
-        );
-    }
-
-    _removeForceCurveData() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.forceCurveData, this._cbForceCurveData
-        );
-    }
-
-    _addAdditionalEndOfWorkoutSummaryData() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.forceCurveData, this._cbAdditionalEndOfWorkoutSummaryData
-        );
-    }
-
-    _removeAdditionalEndOfWorkoutSummaryData() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.forceCurveData, this._cbAdditionalEndOfWorkoutSummaryData
-        );
-    }
-
-    _addHeartRateBeltInformation() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.forceCurveData, this._cbHeartRateBeltInformation
-        );
-    }
-
-    _removeHeartRateBeltInformation() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.forceCurveData, this._cbHeartRateBeltInformation
-        );
-    }
-
-
-    _addAdditionalEndOfWorkoutSummaryData2() {
-        return this._setupCharacteristicValueListener(
-                characteristics.rowingService.forceCurveData, this._cbAdditionalEndOfWorkoutSummaryData2
-        );
-    }
-
-    _removeAdditionalEndOfWorkoutSummaryData2() {
-        return this._teardownCharacteristicValueListener(
-                characteristics.rowingService.forceCurveData, this._cbAdditionalEndOfWorkoutSummaryData2
-        );
-    }
-
-    /*
-     */
-    _getStringCharacteristicValue(characteristic) {
+    async _getStringCharacteristicValue(characteristic) {
         const decoder = new TextDecoder('utf-8');
-
-        return this._getCharacteristic(characteristic)
-            .then(c => {
-                return c.readValue()
-            })
-            .then(v => {
-                return decoder.decode(v);
-            });
+        const c = await this._getCharacteristic(characteristic);
+        const v = await c.readValue();
+        return decoder.decode(v);
     }
 
-    /*
-     */
     getSerialNumber() {
         return this._getStringCharacteristicValue(characteristics.informationService.serialNumber);
     }
 
-    /*
-     */
     getHardwareRevision() {
         return this._getStringCharacteristicValue(characteristics.informationService.hardwareRevision);
     }
 
-    /*
-     */
     getFirmwareRevision() {
         return this._getStringCharacteristicValue(characteristics.informationService.firmwareRevision);
     }
 
-    /*
-     */
     getManufacturerName() {
         return this._getStringCharacteristicValue(characteristics.informationService.manufacturerName);
     }
 
-    /*
-     */
-    getMonitorInformation() {
-        const monitorInformation = {};
-
-        return this.getSerialNumber()
-            .then(serialNumber => {
-                monitorInformation.serialNumber = serialNumber;
-                return this.getHardwareRevision();
-            })
-            .then(hardwareRevision => {
-                monitorInformation.hardwareRevision = hardwareRevision;
-                return this.getFirmwareRevision();
-            })
-            .then(firmwareRevision => {
-                monitorInformation.firmwareRevision = firmwareRevision;
-                return this.getManufacturerName();
-            })
-            .then(manufacturerName => {
-                monitorInformation.manufacturerName = manufacturerName;
-                return Promise.resolve(monitorInformation);
-            })
-            .catch(error => {
-                console.log(error);
-                return Promise.reject(error);
-            });
+    async getMonitorInformation() {
+        const [serialNumber, hardwareRevision, firmwareRevision, manufacturerName] = await Promise.all([
+            this.getSerialNumber(),
+            this.getHardwareRevision(),
+            this.getFirmwareRevision(),
+            this.getManufacturerName()
+        ]);
+        return { serialNumber, hardwareRevision, firmwareRevision, manufacturerName };
     }
-};
+}
