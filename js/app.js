@@ -86,10 +86,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    const toggleBtn = document.querySelector('#toggle-instructions');
-    toggleBtn.addEventListener('click', () => {
-        const instructionText = document.querySelector('#instruction-text');
-        const visible = !instructionText.classList.toggle('hidden');
-        toggleBtn.innerText = visible ? 'Hide instructions' : 'Show instructions';
+    const instructionDialog = document.querySelector('#instruction-text');
+    document.querySelector('#toggle-instructions').addEventListener('click', () => {
+        instructionDialog.showModal();
+    });
+    document.querySelector('#close-instructions').addEventListener('click', () => {
+        instructionDialog.close();
+    });
+    instructionDialog.addEventListener('click', (e) => {
+        if (e.target === instructionDialog) instructionDialog.close();
     });
 });
