@@ -17,13 +17,15 @@
             <h1>PM5 Monitor</h1>
             <div id="controls">
                 <button id="connect">Connect</button>
-                <button id="toggle-instructions" class="secondary">Show instructions</button>
+                <button id="toggle-instructions" class="secondary">Instructions</button>
                 <span id="monitor-information"></span>
             </div>
         </header>
 
         <main>
-            <div id="instruction-text" class="hidden">
+            <dialog id="instruction-text">
+                <button id="close-instructions" class="secondary" aria-label="Close">&times;</button>
+
                 <p>
                 This application connects to a
                 <a target="_blank" href="https://www.concept2.com/indoor-rowers/performance-monitors">Concept2
@@ -48,7 +50,7 @@
                 <p>
                 Tested on Chrome on macOS. <a target="_blank" href="https://github.com/ergarcade/pm5-base">Source on GitHub</a>.
                 </p>
-            </div>
+            </dialog>
 
             <div id="notifications"></div>
         </main>
