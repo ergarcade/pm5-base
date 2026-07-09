@@ -4,74 +4,114 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A static, dependency-free web app that connects to a Concept2 PM5 rowing/ski/bike
-performance monitor over Web Bluetooth and displays all workout variables it
-broadcasts in real time. No build step, no package manager, no framework — plain
-HTML/CSS/JS loaded directly by the browser.
+A static, dependency-free web app that connects to a Concept2 PM5
+rowing/ski/bike performance monitor and displays every workout variable it
+reports in real time. It talks to the same monitor over **two transports**:
+
+- **Web Bluetooth** (BLE GATT) — wireless.
+- **Web HID** (USB) — using the CSAFE protocol.
+
+No build step, no package manager, no framework — plain HTML/CSS/JS loaded
+directly by the browser. (This supersedes the separate `../pm5-hid` repo,
+which was the standalone USB-only version.)
 
 ## Running it
 
-Serve the directory with any static file server and open `index.html` in a
-Web-Bluetooth-capable browser (Chrome on desktop):
+Serve the directory with any static file server and open `index.html` in
+Chrome or Edge (both transports need Chromium; Web HID is unsupported in
+Firefox/Safari):
 
 ```
 python3 -m http.server 8000
 ```
 
-There is no build, lint, or test command configured in this repo (no
-`package.json`). Verify changes by loading the page in a browser and, where
-Bluetooth hardware isn't available, exercising the DOM/CSS by hand (e.g. via
-Playwright) since there's no automated test suite.
+There is one automated test — a pure-data check of the merged field module,
+runnable under node with no browser or hardware:
+
+```
+node --test test/printables.test.mjs
+```
+
+There is no linter or type checker configured. The transport code itself
+(BLE/HID connect paths, live data) can only be verified by loading the page in
+a browser against a real PM5 — pick a transport, Connect, and watch the cards
+populate.
 
 ## Architecture
 
-Three scripts, loaded via plain `<script>` tags in `index.html` (order matters —
+Four scripts, loaded via plain `<script>` tags in `index.html` (order matters —
 no module system):
 
-1. **`js/pm5.js`** — `PM5`, a standalone `EventTarget` subclass wrapping the Web
-   Bluetooth GATT interface. Owns all protocol knowledge: service/characteristic
-   UUIDs (from the Concept2 PM5 Bluetooth Smart spec), connect/disconnect
-   lifecycle, and binary parsing of each characteristic's byte layout into typed
-   JS objects. Has zero DOM dependencies — it only takes four callbacks
-   (`cb_connecting`, `cb_connected`, `cb_disconnected`, `cb_message`) and dispatches
-   native `Event`s (`event.type`, `event.data`, `event.source`, `event.raw`).
-   Event types mirror the PM5 rowing service characteristics (`general-status`,
-   `stroke-data`, `multiplexed-information`, etc.) — see the README for the
-   `new PM5(...)` usage shape. Characteristics can be delivered individually or
-   multiplexed onto one characteristic (0x0080); `_cbMultiplexedInformation`
-   demuxes by a leading type-id byte and reuses the same per-characteristic
-   `_cb*`/`_extract*` methods with a `multiplexed=true` flag. That leading byte
-   shifts every field by one position, and each characteristic's multiplexed
-   encoding also adds or drops a handful of fields relative to its standalone
-   layout — not a single consistent rule (see Protocol notes below).
-2. **`js/pm5-printables.js`** — pure data/formatting layer, no DOM or Bluetooth
-   code. `pm5printables` holds formatter functions (units, enums-to-labels,
-   time formatting). `pm5fields` maps each `PM5` data key (e.g. `elapsedTime`,
-   `strokeRate`) to a `{ label, printable }` pair used to render it.
-3. **`js/app.js`** — the only DOM-touching layer. Wires the Connect button to
-   `PM5.doConnect`/`doDisconnect`, and in `cbMessage` dynamically builds one
-   `.card` per event type and one `.field` row per data key inside it (looked up
-   by id, created lazily on first sight) using the `pm5fields` label/printable
-   pair. Clicking a field row toggles a `.highlight` class.
+1. **`js/pm5-ble.js`** — `PM5`, an `EventTarget` subclass wrapping the Web
+   Bluetooth GATT interface. Owns all BLE protocol knowledge: service/
+   characteristic UUIDs (Concept2 PM5 Bluetooth Smart spec), connect/disconnect
+   lifecycle, and binary parsing of each characteristic's byte layout. Zero DOM
+   dependencies. On real hardware every rowing sub-message arrives multiplexed
+   on characteristic 0x0080, so all data is dispatched under one event type,
+   `multiplexed-information`; `_cbMultiplexedInformation` demuxes by a leading
+   type-id byte and reuses the same `_cb*`/`_extract*` methods with a
+   `multiplexed=true` flag (that byte shifts every field by one, and each
+   characteristic's multiplexed encoding also adds or drops a few fields — see
+   Protocol notes).
+2. **`js/pm5-hid.js`** — `PM5HID`, an `EventTarget` subclass wrapping Web HID.
+   Owns the CSAFE-over-USB protocol: builds/sends command frames (byte-stuffing,
+   XOR checksum), parses responses, and polls at 100 ms (a stroke frame every
+   tick, a full workout frame every 5th tick). Dispatches its data as `workout`
+   and `stroke` events. Also zero DOM dependencies.
+3. **`js/pm5-fields.js`** — pure data/formatting layer, no DOM or transport
+   code. `pm5printables` holds formatter functions (units, enums-to-labels, time
+   formatting). `pm5fields` maps each data key (from either transport) to a
+   `{ label, printable }` pair. This is the **union** of the two transports'
+   fields: BLE's full set plus HID's unique keys (`status`, `workTime`,
+   `workDistance`, `pace`, `power`, `calories`, `cadence`). Keys the two
+   transports share (`workoutType`, `workoutState`, `strokeState`, `dragFactor`,
+   `heartRate`) have a single entry. **`heartRate` is the one reconciled
+   formatter**: BLE reports no-belt as 255, HID as 0, so the merged formatter
+   treats both as `N/A` (pinned by the test). A `typeof module` export shim at
+   the end lets the node test import the maps; it is a no-op in the browser.
+4. **`js/app.js`** — the only DOM-touching layer, and it is
+   **transport-agnostic**. Both classes expose the same interface — public
+   `connect()` / `disconnect()` / `connected()`, lifecycle events
+   `connecting` / `connected` (data = monitor info) / `disconnected`, and a
+   static `MESSAGE_EVENTS` list of their data event types — so app.js has no
+   per-transport branching. A `<select id="transport">` chooses Bluetooth or
+   USB; on Connect it builds the matching class (`TRANSPORTS` map), wires the
+   lifecycle listeners, calls `connect()`, and on `connected` subscribes
+   `cbMessage` to that transport's `MESSAGE_EVENTS`. `cbMessage` builds one
+   `.card` per event type and one `.field` row per data key (looked up in
+   `pm5fields`, created lazily), skipping keys not in the map. Clicking a field
+   row toggles `.highlight`.
 
-`index.html` also holds an instructions panel implemented as a native `<dialog>`
-(`#instruction-text`), opened via `showModal()`/`close()` from `app.js` — no
-custom modal/animation library, relying on the platform's built-in focus
-trapping and Escape-to-close.
+`index.html` also holds an instructions panel implemented as a native
+`<dialog>` (`#instruction-text`), opened via `showModal()`/`close()` — no custom
+modal library.
 
-Styling (`css/style.css`) is a single stylesheet using CSS custom properties for
-theming, with a `prefers-color-scheme: dark` override block for dark mode — there
-is no separate dark-mode stylesheet or class toggle.
+Styling (`css/style.css`) is a single stylesheet using CSS custom properties,
+with a `prefers-color-scheme: dark` override block for dark mode.
 
-## Protocol notes worth knowing before touching `pm5.js`
+### Adding a third transport
 
-- Byte layouts and field semantics come from the Concept2 PM5 Bluetooth Smart
-  Communications Interface spec (v1.25). Each `_extract*` method's leading
-  comment cross-references the equivalent CSAFE command where one exists.
-- Non-multiplexed and multiplexed payloads for the same characteristic are not
-  byte-identical — some fields shift position or drop entirely when multiplexed
-  (see the `o`/`p`/`s` offset variables in each `_extract*` method). When adding
-  or fixing a field, check both code paths.
-- `force-curve-data` (characteristic `0x003d`) is deliberately unhandled — the
-  comment in `_characteristicHandlers` notes it isn't present on real hardware
-  despite being in the spec.
+Implement a class with the shared interface (`connect`/`disconnect`/`connected`,
+the three lifecycle events, static `MESSAGE_EVENTS`), add its unique keys to
+`pm5fields`, add a `<script>` tag and an entry to `TRANSPORTS` (plus an
+`<option>`) in `index.html`/`app.js`. No changes to `cbMessage` needed.
+
+## Protocol notes worth knowing before touching the transport classes
+
+- **BLE (`pm5-ble.js`)**: byte layouts come from the Concept2 PM5 Bluetooth
+  Smart Communications Interface spec (v1.25). Each `_extract*` method's comment
+  cross-references the equivalent CSAFE command. Non-multiplexed and multiplexed
+  payloads for the same characteristic are **not** byte-identical — some fields
+  shift or drop when multiplexed (see the `o`/`p`/`s` offset variables). When
+  adding or fixing a field, check both code paths. `force-curve-data` (0x003d)
+  is deliberately unhandled — not present on real hardware despite being in the
+  spec.
+- **HID (`pm5-hid.js`)**: CSAFE over HID report ID `0x02` with a 120-byte
+  payload. Frames are bounded by `0xf1` (start) / `0xf2` (stop); bytes in
+  `0xf0–0xf3` inside the payload are byte-stuffed, and a single XOR checksum byte
+  is appended before stuffing. PM-specific sub-commands are routed via
+  `SETUSERCFG1` (0x1a). See the Concept2 PM CSAFE Communication Definition (SDK).
+- The two transports report overlapping data under **different key names** (e.g.
+  BLE `strokeRate` vs HID `cadence`, BLE `currentPace`/`averagePace` vs HID
+  `pace`), so most keys coexist without collision. Only the five shared keys
+  above are single entries; of those only `heartRate` needed reconciling.

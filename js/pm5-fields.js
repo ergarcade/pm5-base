@@ -9,7 +9,9 @@ const pm5printables = {
     as_is:            n => n.toString(),
     fixed:            n => n.toFixed(),
     m_per_second:     n => n.toFixed() + 'm/s',
-    heartRate:        n => n === 255 ? 'N/A' : n.toString(),
+    // Merged sentinel: BLE reports no-belt as 255, HID reports it as 0.
+    heartRate:        n => (n === 0 || n === 255) ? 'N/A' : n + ' bpm',
+    spm:              n => n + ' spm',
     watts:            n => n.toFixed().toLocaleString() + 'W',
     calories:         n => n.toLocaleString() + 'cals',
     metres_fixed:     n => n.toFixed().toLocaleString() + 'm',
@@ -82,6 +84,32 @@ const pm5printables = {
     },
 
     workoutDuration: n => n.toString(),
+
+    // HID (CSAFE) transport formatters.
+    workTime(secs) {
+        return new Date(secs * 1000).toISOString().slice(11, 19);
+    },
+
+    pace500m(secs) {
+        if (secs <= 0) return '--:--';
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        return `${m}:${String(s).padStart(2, '0')}/500m`;
+    },
+
+    deviceStatus(n) {
+        return ({
+            0: 'Error',
+            1: 'Ready',
+            2: 'Idle',
+            3: 'Have ID',
+            5: 'In Use',
+            6: 'Paused',
+            7: 'Finished',
+            8: 'Manual',
+            9: 'Offline',
+        })[n] ?? 'Unknown';
+    },
 
     workoutDurationType(wdurationtype) {
         return ({
@@ -438,4 +466,42 @@ const pm5fields = {
         label: 'Total Watt-Minutes',
         printable: pm5printables.wattMinutes,
     },
+
+    // HID (CSAFE) transport fields. Keys are distinct from the BLE keys
+    // above; the shared keys (workoutType, workoutState, strokeState,
+    // dragFactor, heartRate) reuse the BLE entries already defined.
+    status: {
+        label: 'Device Status',
+        printable: pm5printables.deviceStatus,
+    },
+    workTime: {
+        label: 'Work Time',
+        printable: pm5printables.workTime,
+    },
+    workDistance: {
+        label: 'Work Distance',
+        printable: pm5printables.metres,
+    },
+    pace: {
+        label: 'Pace',
+        printable: pm5printables.pace500m,
+    },
+    power: {
+        label: 'Power',
+        printable: pm5printables.watts,
+    },
+    calories: {
+        label: 'Calories',
+        printable: pm5printables.calories,
+    },
+    cadence: {
+        label: 'Stroke Rate',
+        printable: pm5printables.spm,
+    },
 };
+
+// ponytail: export shim so test/printables.test.mjs can import the pure
+// formatter/field maps under node; a no-op in the browser (no `module`).
+if (typeof module !== 'undefined') {
+    module.exports = { pm5printables, pm5fields };
+}

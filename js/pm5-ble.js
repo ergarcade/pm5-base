@@ -1,19 +1,20 @@
 'use strict';
 
 /*
- * Minimal usage:
+ * EventTarget-native API (matches PM5HID so app.js is transport-agnostic):
  *
- *  const m = new PM5(
- *      () => { },          // connecting
- *      () => { },          // connected
- *      () => { },          // disconnected
- *      (event) => { }      // message: event.type, event.data
- *  );
+ *  const m = new PM5();
+ *  m.addEventListener('connecting',   () => { });
+ *  m.addEventListener('connected',    e  => { });  // e.data = monitor info
+ *  m.addEventListener('disconnected', () => { });
  *
- *  // Bluetooth connections require a user gesture:
+ *  // connect() prompts the device picker, so it needs a user gesture:
  *  document.querySelector('#connect').addEventListener('click', () => {
- *      m.connected() ? m.doDisconnect() : m.doConnect();
+ *      m.connected() ? m.disconnect() : m.connect();
  *  });
+ *
+ *  // After 'connected', subscribe to the data events:
+ *  for (const t of PM5.MESSAGE_EVENTS) m.addEventListener(t, e => { }); // e.data
  */
 
 /*
@@ -63,6 +64,11 @@ const characteristics = {
 
 class PM5 extends EventTarget {
 
+    // Data-event types app.js subscribes to for this transport. On real
+    // hardware every rowing sub-message arrives multiplexed on 0x0080, so a
+    // single event type carries all of them.
+    static MESSAGE_EVENTS = ['multiplexed-information'];
+
     // Maps event type name -> [rowingService characteristic key, handler method name]
     static _characteristicHandlers = {
         'general-status':                 ['generalStatus',                      '_cbGeneralStatus'],
@@ -96,37 +102,27 @@ class PM5 extends EventTarget {
         0x3c: '_cbAdditionalEndOfWorkoutSummaryData2',
     };
 
-    constructor(cb_connecting, cb_connected, cb_disconnected, cb_message) {
+    constructor() {
         super();
         this._idObjectMap = new Map();  // service/characteristic id -> BT object cache
         this._listenerMap = new Map();  // characteristic id -> bound handler (for removal)
-
-        this.cb_connecting = cb_connecting;
-        this.cb_connected = cb_connected;
-        this.cb_disconnected = cb_disconnected;
-        this.cb_message = cb_message;
     }
 
-    async doConnect() {
-        try {
-            await this.connect();
-            this.cb_connecting();
-            await this.addEventListener('multiplexed-information', this.cb_message);
-            this.addEventListener('disconnect', this.cb_disconnected);
-            this.cb_connected();
-        } catch (error) {
-            console.log(error);
-        }
+    // Public lifecycle: matches PM5HID so app.js is transport-agnostic.
+    // Emits 'connecting', then 'connected' (data = monitor info), and
+    // 'disconnected' when the GATT link drops (or disconnect() is called).
+    async connect() {
+        this._dispatchLifecycle('connecting');
+        await this.#openGatt();
+        const info = await this.getMonitorInformation().catch(() => ({}));
+        this._dispatchLifecycle('connected', info);
     }
 
-    async doDisconnect() {
-        try {
-            await this.removeEventListener('multiplexed-information', this.cb_message);
-            this.removeEventListener('disconnect', this.cb_disconnected);
-            this.disconnect();
-        } catch (error) {
-            console.log(error);
-        }
+    _dispatchLifecycle(type, data = null) {
+        const event = new Event(type);
+        event.source = this;
+        event.data = data;
+        this.dispatchEvent(event);
     }
 
     addEventListener(type, callback) {
@@ -152,7 +148,7 @@ class PM5 extends EventTarget {
         return Promise.resolve();
     }
 
-    async connect() {
+    async #openGatt() {
         if (!navigator.bluetooth) {
             throw new Error('Bluetooth not available');
         }
@@ -172,7 +168,7 @@ class PM5 extends EventTarget {
             this.device.removeEventListener('gattserverdisconnected', onGattDisconnect);
             this._idObjectMap.clear();
             this._listenerMap.clear();
-            this.dispatchEvent(new Event('disconnect'));
+            this._dispatchLifecycle('disconnected');
         };
         this.device.addEventListener('gattserverdisconnected', onGattDisconnect);
 
