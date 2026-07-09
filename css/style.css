@@ -103,6 +103,17 @@ button.secondary:hover {
     background: var(--border);
 }
 
+#transport {
+    cursor: pointer;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text);
+    padding: 0.4rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
 #monitor-information {
     margin-left: 0.25rem;
     font-size: 0.75rem;

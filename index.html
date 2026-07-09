@@ -5,8 +5,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>PM5 Monitor</title>
 
-        <script src="js/pm5.js"></script>
-        <script src="js/pm5-printables.js"></script>
+        <script src="js/pm5-ble.js"></script>
+        <script src="js/pm5-hid.js"></script>
+        <script src="js/pm5-fields.js"></script>
         <script src="js/app.js"></script>
 
         <link rel="stylesheet" href="css/style.css">
@@ -16,6 +17,10 @@
         <header>
             <h1>PM5 Monitor</h1>
             <div id="controls">
+                <select id="transport" aria-label="Transport">
+                    <option value="bluetooth">Bluetooth</option>
+                    <option value="usb">USB</option>
+                </select>
                 <button id="connect">Connect</button>
                 <button id="toggle-instructions" class="secondary">Instructions</button>
                 <span id="monitor-information"></span>
@@ -29,21 +34,27 @@
                 <p>
                 This application connects to a
                 <a target="_blank" href="https://www.concept2.com/indoor-rowers/performance-monitors">Concept2
-                PM5</a> monitor over Bluetooth and displays all workout variables.
+                PM5</a> monitor &mdash; over <strong>Bluetooth</strong> (wireless) or
+                <strong>USB</strong> &mdash; and displays all workout variables it reports.
                 </p>
 
                 <h2>Requirements</h2>
                 <ul>
-                    <li><a target="_blank" href="https://caniuse.com/#feat=web-bluetooth">Web Bluetooth supported browser</a></li>
-                    <li><a target="_blank" href="https://www.concept2.com/indoor-rowers/performance-monitors">PM5</a> attached to a
-                        <a target="_blank" href="https://www.concept2.com">Concept2 ergometer</a></li>
+                    <li><strong>Bluetooth:</strong> a
+                        <a target="_blank" href="https://caniuse.com/#feat=web-bluetooth">Web Bluetooth</a>
+                        browser (Chrome/Edge on desktop) and the PM5's wireless turned on.</li>
+                    <li><strong>USB:</strong> Chrome or Edge (Web HID is not supported in Firefox or Safari)
+                        with the PM5 connected by USB.</li>
+                    <li>A <a target="_blank" href="https://www.concept2.com/indoor-rowers/performance-monitors">PM5</a>
+                        attached to a <a target="_blank" href="https://www.concept2.com">Concept2 ergometer</a>.</li>
                 </ul>
 
                 <h2>Usage</h2>
                 <ul>
-                    <li>On the PM5, <strong>More Options</strong> &rarr; <strong>Turn Wireless ON</strong></li>
-                    <li>Click the <strong>Connect</strong> button above and pair to the PM5.</li>
-                    <li>Wait a moment while the browser reads the device characteristics.</li>
+                    <li>Pick <strong>Bluetooth</strong> or <strong>USB</strong> from the dropdown.</li>
+                    <li>For Bluetooth, on the PM5: <strong>More Options</strong> &rarr; <strong>Turn Wireless ON</strong>.
+                        For USB, connect the PM5 to your computer.</li>
+                    <li>Click <strong>Connect</strong> and pick the PM5 from the browser's device picker.</li>
                     <li>Click any field to highlight it.</li>
                     <li>Set up a workout on the PM5. Start rowing, skiing, or biking. Watch the numbers change.</li>
                 </ul>
