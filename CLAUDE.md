@@ -39,9 +39,11 @@ no module system):
    `stroke-data`, `multiplexed-information`, etc.) — see the README for the
    `new PM5(...)` usage shape. Characteristics can be delivered individually or
    multiplexed onto one characteristic (0x0080); `_cbMultiplexedInformation`
-   demuxes by leading byte and reuses the same per-characteristic extractor
-   methods with a `multiplexed=true` offset flag, since multiplexed payloads drop
-   one field that's redundant across the whole batch.
+   demuxes by a leading type-id byte and reuses the same per-characteristic
+   `_cb*`/`_extract*` methods with a `multiplexed=true` flag. That leading byte
+   shifts every field by one position, and each characteristic's multiplexed
+   encoding also adds or drops a handful of fields relative to its standalone
+   layout — not a single consistent rule (see Protocol notes below).
 2. **`js/pm5-printables.js`** — pure data/formatting layer, no DOM or Bluetooth
    code. `pm5printables` holds formatter functions (units, enums-to-labels,
    time formatting). `pm5fields` maps each `PM5` data key (e.g. `elapsedTime`,
