@@ -36,6 +36,12 @@ then visit `http://localhost:8000/example/`.
   biking, and watch the numbers change. For Mock, the numbers start climbing
   immediately (real-time by default, looping) — a speed dropdown (1x–16x)
   appears next to Connect and can be changed live while replaying.
+* **Split metrics into cards** (checkbox next to Connect): by default, fields
+  are grouped into one card per event type, matching how the data actually
+  arrives on the wire (e.g. everything BLE reports lands under one
+  "Multiplexed Information" card, same as on real hardware). Check the box to
+  instead give every individual metric its own card — a display-only
+  regrouping for browsing the data, not a protocol distinction.
 
 Tested on Chrome on macOS. [Source on GitHub].
 

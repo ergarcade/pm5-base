@@ -69,43 +69,60 @@ const cbDisconnected = () => {
     monitor = null;
 };
 
-const cbMessage = (event) => {
-    let div = document.getElementById(event.type);
+const getOrCreateCard = (id, title) => {
+    let div = document.getElementById(id);
     if (!div) {
         div = document.createElement('div');
-        div.id = event.type;
+        div.id = id;
         div.className = 'card';
 
-        const title = document.createElement('h3');
-        title.className = 'card-title';
-        title.textContent = formatCardTitle(event.type);
-        div.appendChild(title);
+        const t = document.createElement('h3');
+        t.className = 'card-title';
+        t.textContent = title;
+        div.appendChild(t);
 
         el('#notifications').appendChild(div);
     }
+    return div;
+};
 
-    for (const [k, v] of Object.entries(event.data)) {
-        if (!(k in pm5fields)) continue;
+const setField = (div, k, v) => {
+    let s = div.querySelector(`.field-value.${k}`);
+    if (!s) {
+        const p = document.createElement('div');
+        p.className = 'field';
 
-        let s = document.querySelector(`#${event.type} .field-value.${k}`);
-        if (!s) {
-            const p = document.createElement('div');
-            p.className = 'field';
+        const desc = document.createElement('span');
+        desc.className = 'field-label';
+        desc.textContent = pm5fields[k].label;
 
-            const desc = document.createElement('span');
-            desc.className = 'field-label';
-            desc.textContent = pm5fields[k].label;
+        s = document.createElement('span');
+        s.className = `field-value ${k}`;
 
-            s = document.createElement('span');
-            s.className = `field-value ${k}`;
+        p.appendChild(desc);
+        p.appendChild(s);
+        div.appendChild(p);
 
-            p.appendChild(desc);
-            p.appendChild(s);
-            div.appendChild(p);
+        p.addEventListener('click', () => p.classList.toggle('highlight'));
+    }
+    s.textContent = pm5fields[k].printable(v);
+};
 
-            p.addEventListener('click', () => p.classList.toggle('highlight'));
+// Two card layouts: grouped by the transport's event type (matches how the
+// data actually arrives on the wire), or split so each metric gets its own
+// card (a demo/debugging aid, not a protocol distinction).
+const cbMessage = (event) => {
+    if (el('#split-metrics').checked) {
+        for (const [k, v] of Object.entries(event.data)) {
+            if (!(k in pm5fields)) continue;
+            setField(getOrCreateCard(`metric-${k}`, pm5fields[k].label), k, v);
         }
-        s.textContent = pm5fields[k].printable(v);
+        return;
+    }
+
+    const div = getOrCreateCard(event.type, formatCardTitle(event.type));
+    for (const [k, v] of Object.entries(event.data)) {
+        if (k in pm5fields) setField(div, k, v);
     }
 };
 
@@ -134,6 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Live speed changes take effect immediately if Mock is connected.
     speedSel.addEventListener('change', () => monitor?.setSpeed?.(Number(speedSel.value)));
+
+    // Switching card layout mid-session would otherwise leave stale cards
+    // from the old layout alongside the new ones; clear and let the next
+    // data event rebuild from scratch.
+    el('#split-metrics').addEventListener('change', () => el('#notifications').replaceChildren());
 
     el('#connect').addEventListener('click', () => {
         if (monitor?.connected()) {

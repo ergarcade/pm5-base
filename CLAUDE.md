@@ -138,10 +138,14 @@ matters — no module system):
    falling back to the static list** (`monitor.MESSAGE_EVENTS ??
    monitor.constructor.MESSAGE_EVENTS`), since `PM5Mock` sets it per instance
    while `PM5`/`PM5HID` only have the static. `cbMessage` builds one `.card`
-   per event type and one `.field` row per data key (looked up in `pm5fields`,
-   created lazily), skipping keys not in the map. Clicking a field row toggles
-   `.highlight`. A `<select id="mock-speed">` (hidden unless Mock is selected)
-   sets the initial `speed` when building `PM5Mock` and calls its `setSpeed()`
+   per event type (or, with the `#split-metrics` checkbox ticked, one `.card`
+   per data key instead — a display-only regrouping via `getOrCreateCard`, not
+   a protocol distinction; toggling it clears `#notifications` so the next
+   event rebuilds under the new grouping) and one `.field` row per data key
+   (looked up in `pm5fields`, created lazily), skipping keys not in the map.
+   Clicking a field row toggles `.highlight`. A `<select id="mock-speed">`
+   (hidden unless Mock is selected) sets the initial `speed` when building
+   `PM5Mock` and calls its `setSpeed()`
    live on change — the one Mock-specific control, since `setSpeed` isn't part
    of the shared transport interface.
 
