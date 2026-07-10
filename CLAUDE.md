@@ -61,6 +61,12 @@ There is no linter or type checker configured. The BLE/HID transport code
 browser against real hardware — pick a transport, Connect, and watch the cards
 populate. Mock can be verified the same way without hardware.
 
+## Setting up a new product repo
+
+Spinning up a new ergarcade product built on this library (repo creation,
+submodule, topics) is a checklist, not something to re-derive — see
+README.md's "Setting up a new ergarcade product repo" section.
+
 ## Architecture
 
 Scripts are loaded via plain `<script>` tags in `example/index.html` (order
