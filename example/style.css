@@ -120,6 +120,20 @@ button.secondary:hover {
     color: var(--text-muted);
 }
 
+#split-metrics-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+#split-metrics-label input {
+    cursor: pointer;
+}
+
 /* ── Main ── */
 
 main {
