@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
-const { pm5printables, pm5fields } = createRequire(import.meta.url)('../js/pm5-fields.js');
+const { pm5printables, pm5fields } = createRequire(import.meta.url)('../lib/pm5-fields.js');
 
 test('heartRate merges both no-belt sentinels (BLE 255, HID 0)', () => {
     assert.equal(pm5printables.heartRate(0), 'N/A');
