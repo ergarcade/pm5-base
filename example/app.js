@@ -10,6 +10,16 @@ const el = sel => document.querySelector(sel);
 const TRANSPORTS = {
     bluetooth: { label: 'Bluetooth', build: () => new PM5(),    supported: () => !!navigator.bluetooth },
     usb:       { label: 'USB',       build: () => new PM5HID(), supported: () => !!navigator.hid },
+    mock:      {
+        label: 'Mock',
+        build: () => new PM5Mock({
+            loadSamples: () => csvSource.loadFromUrl('../lib/mock-data/concept2-result-44214428.csv'),
+            emulate: 'ble',
+            speed: 8,
+            loop: true,
+        }),
+        supported: () => true,
+    },
 };
 
 // Labels for the fields each transport reports in its `connected` event.
@@ -42,7 +52,11 @@ const cbConnected = (event) => {
 
     // The GATT/HID link is up now, so it's safe to subscribe to this
     // transport's data events (BLE starts characteristic notifications here).
-    for (const type of monitor.constructor.MESSAGE_EVENTS) {
+    // Instance-first: PM5Mock's event shape depends on its `emulate` option,
+    // so it sets MESSAGE_EVENTS per-instance; PM5/PM5HID have no instance
+    // field and fall back to their static list, unchanged.
+    const events = monitor.MESSAGE_EVENTS ?? monitor.constructor.MESSAGE_EVENTS;
+    for (const type of events) {
         monitor.addEventListener(type, cbMessage);
     }
 };
