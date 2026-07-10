@@ -15,7 +15,7 @@ const TRANSPORTS = {
         build: () => new PM5Mock({
             loadSamples: () => csvSource.loadFromUrl('../lib/mock-data/concept2-result-44214428.csv'),
             emulate: 'ble',
-            speed: 8,
+            speed: Number(el('#mock-speed').value),
             loop: true,
         }),
         supported: () => true,
@@ -111,6 +111,7 @@ const cbMessage = (event) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     const transportSel = el('#transport');
+    const speedSel = el('#mock-speed');
 
     // Flag unsupported transports and default to the first supported one.
     let firstSupported = null;
@@ -125,6 +126,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     if (firstSupported) transportSel.value = firstSupported;
+
+    // The speed control only applies to Mock.
+    const syncSpeedVisibility = () => { speedSel.hidden = transportSel.value !== 'mock'; };
+    syncSpeedVisibility();
+    transportSel.addEventListener('change', syncSpeedVisibility);
+
+    // Live speed changes take effect immediately if Mock is connected.
+    speedSel.addEventListener('change', () => monitor?.setSpeed?.(Number(speedSel.value)));
 
     el('#connect').addEventListener('click', () => {
         if (monitor?.connected()) {
