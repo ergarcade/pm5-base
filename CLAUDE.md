@@ -92,9 +92,18 @@ matters — no module system):
    it live, taking effect from the next scheduled sample onward. A normalized
    sample is
    `{ t, distance, pace, watts, calPerHour, strokeRate, heartRate }` (any field
-   but `t` may be `undefined`); `_toBle`/`_toHid` map it to the same field keys
-   `pm5fields` already defines for the real transports, omitting keys whose
-   value is `undefined` so nothing renders for missing HR/stroke-rate readings.
+   but `t` may be `undefined`); `_toBleGeneralStatus`/`_toBleAdditionalStatus`/
+   `_toHid` map it to the same field keys `pm5fields` already defines for the
+   real transports, omitting keys whose value is `undefined` so nothing
+   renders for missing HR/stroke-rate readings. For BLE, each replay tick
+   dispatches **two** `multiplexed-information` events — one shaped like real
+   general-status (`elapsedTime`, `distance`), one like additional-status
+   (`elapsedTime`, `currentPace`, `averagePower`, `strokeRate`, `heartRate`) —
+   mirroring how real hardware demuxes distinct sub-messages onto that one
+   event type rather than bundling every field into a single dispatch (see
+   Protocol notes). HID stays a single `workout` dispatch per tick, since
+   that's how the real USB protocol actually behaves (one polled frame, many
+   chained CSAFE commands, one combined response).
    `MESSAGE_EVENTS` is set **per instance** (not static, unlike `PM5`/`PM5HID`)
    since its shape depends on `emulate` — see the app.js note below.
    - **`lib/mock-data/csv-source.js`** — the first (and currently only) sample
@@ -178,7 +187,11 @@ project — feeding the same seam.
 - **Mock (`pm5-mock.js`)**: not a protocol at all — it's a data replay engine.
   The interesting design point is the separation between the replay engine
   (transport-shaped, protocol-agnostic) and the sample source (currently CSV,
-  future Logbook API): they only agree on the normalized sample shape.
+  future Logbook API): they only agree on the normalized sample shape. On the
+  BLE side it also mirrors the real demux split (general-status vs
+  additional-status) rather than bundling every field into one event — worth
+  checking again if a third BLE sub-message type (e.g. stroke-data) ever needs
+  emulating.
 - The transports report overlapping data under **different key names** (e.g.
   BLE `strokeRate` vs HID `cadence`, BLE `currentPace`/`averagePace` vs HID
   `pace`), so most keys coexist without collision. Only the five shared keys

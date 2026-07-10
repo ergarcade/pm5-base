@@ -28,18 +28,32 @@ test('parseCsv parses the shipped CSV', () => {
     assert.equal(last.heartRate, undefined);
 });
 
-test('_toBle omits undefined fields and only emits known pm5fields keys', () => {
-    const withHr    = PM5Mock._toBle({ t: 10, distance: 20, pace: 150, watts: 100, strokeRate: 24, heartRate: 142 });
-    const withoutHr = PM5Mock._toBle({ t: 0.7, distance: 2.4, pace: 163.3, watts: 80, strokeRate: undefined, heartRate: undefined });
+test('_toBleGeneralStatus carries only elapsedTime/distance', () => {
+    const data = PM5Mock._toBleGeneralStatus({ t: 10, distance: 20, pace: 150, watts: 100, strokeRate: 24, heartRate: 142 });
+    assert.deepEqual(data, { elapsedTime: 10, distance: 20 });
+    for (const k of Object.keys(data)) assert.ok(k in pm5fields, `missing key ${k}`);
+});
+
+test('_toBleAdditionalStatus omits undefined fields and only emits known pm5fields keys', () => {
+    const withHr    = PM5Mock._toBleAdditionalStatus({ t: 10, distance: 20, pace: 150, watts: 100, strokeRate: 24, heartRate: 142 });
+    const withoutHr = PM5Mock._toBleAdditionalStatus({ t: 0.7, distance: 2.4, pace: 163.3, watts: 80, strokeRate: undefined, heartRate: undefined });
 
     assert.deepEqual(withHr, {
-        elapsedTime: 10, distance: 20, currentPace: 150,
+        elapsedTime: 10, currentPace: 150,
         averagePower: 100, strokeRate: 24, heartRate: 142,
     });
     assert.deepEqual(withoutHr, {
-        elapsedTime: 0.7, distance: 2.4, currentPace: 163.3, averagePower: 80,
+        elapsedTime: 0.7, currentPace: 163.3, averagePower: 80,
     });
     for (const k of Object.keys(withHr)) assert.ok(k in pm5fields, `missing key ${k}`);
+});
+
+test('_toBleGeneralStatus and _toBleAdditionalStatus never overlap except elapsedTime', () => {
+    const sample = { t: 10, distance: 20, pace: 150, watts: 100, strokeRate: 24, heartRate: 142 };
+    const general    = Object.keys(PM5Mock._toBleGeneralStatus(sample));
+    const additional = Object.keys(PM5Mock._toBleAdditionalStatus(sample));
+    const overlap = general.filter(k => additional.includes(k));
+    assert.deepEqual(overlap, ['elapsedTime']);
 });
 
 test('_toHid omits undefined fields and only emits known pm5fields keys', () => {
