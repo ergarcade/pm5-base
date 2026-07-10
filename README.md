@@ -142,6 +142,35 @@ monitor.setSpeed(8);  // adjust live; takes effect from the next sample onward
 heartRate }`. A future source (e.g. the Concept2 Logbook API) would be a
 sibling module producing the same shape — no changes to `pm5-mock.js` needed.
 
+## Setting up a new ergarcade product repo
+
+For a one-off script, copying files out of `lib/` (above) is fine. For a full
+product repo meant to receive ongoing updates, use a git submodule instead —
+`ergarcade/recorder` is the reference example:
+
+1. Create the repo, named after the product (not `pm5-<name>` — that prefix is
+   legacy from the pre-submodule `pm5-overlay`/`pm5-detail`/`pm5-dump` repos,
+   which are being phased out). Defaults to private; make it public later with
+   `gh repo edit --visibility public` once it's ready:
+   ```
+   gh repo create ergarcade/<name> --private --license mit --add-readme --clone
+   ```
+   Keep whatever default branch `gh` assigns (e.g. `main`) rather than
+   renaming it to match older repos.
+2. Add this repo as a submodule tracking `master`:
+   ```
+   git submodule add -b master https://github.com/ergarcade/pm5-base.git pm5-base
+   ```
+3. Set topics for discoverability — `concept2`, `pm5`, and the product name:
+   ```
+   gh api -X PUT repos/ergarcade/<name>/topics -f 'names[]=concept2' -f 'names[]=pm5' -f 'names[]=<name>'
+   ```
+4. Document the submodule clone/update steps in the new repo's own README:
+   `git clone --recurse-submodules ...` (or `git submodule update --init` after
+   a plain clone) to get it, `git submodule update --remote pm5-base` to pull
+   in library updates later.
+5. Commit and push.
+
 ## Tests
 
 The pure `lib/` modules (field/formatter maps, CSV parsing, sample mapping)
