@@ -7,6 +7,8 @@
 
         <script src="../lib/pm5-ble.js"></script>
         <script src="../lib/pm5-hid.js"></script>
+        <script src="../lib/pm5-mock.js"></script>
+        <script src="../lib/mock-data/csv-source.js"></script>
         <script src="../lib/pm5-fields.js"></script>
         <script src="app.js"></script>
 
@@ -20,6 +22,7 @@
                 <select id="transport" aria-label="Transport">
                     <option value="bluetooth">Bluetooth</option>
                     <option value="usb">USB</option>
+                    <option value="mock">Mock</option>
                 </select>
                 <button id="connect">Connect</button>
                 <button id="toggle-instructions" class="secondary">Instructions</button>
