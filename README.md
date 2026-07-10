@@ -1,120 +1,155 @@
-This is a library plus demo app for connecting to a [Concept2 PM5] monitor and
-reporting all variables made available on its interface. It supports **three
-transports** for the same monitor:
+# pm5-base
 
-* **Bluetooth** (Web Bluetooth) — wireless.
-* **USB** (Web HID) — using the CSAFE protocol.
-* **Mock** — replays a recorded workout, no hardware required.
+A dependency-free JS library for talking to a [Concept2 PM5] rowing/ski/bike
+performance monitor from the browser, over three interchangeable transports:
 
-## Requirements
+* **`PM5`** — Web Bluetooth (BLE GATT), wireless.
+* **`PM5HID`** — Web HID (USB), CSAFE protocol.
+* **`PM5Mock`** — replays a recorded workout; no hardware, for developing and
+  demoing without a PM5 in the room.
 
-* Chrome or Edge for Bluetooth/USB (both need Chromium; Web HID is not
-  supported in Firefox or Safari). See [Web Bluetooth support]. Mock works in
-  any modern browser.
-* A [PM5] attached to a [Concept2 ergometer] (not needed for Mock).
+No build step, no package manager, no framework — plain classes loaded via
+`<script>` tags, meant to be dropped straight into your own app.
 
-## Usage
+A full reference implementation lives in [`example/`](example/) — see
+[`example/README.md`](example/README.md) to run it.
 
-* Serve the repo root with a static file server and open `example/index.html`:
-  ```
-  python3 -m http.server 8000
-  ```
-  then visit `http://localhost:8000/example/`.
-* Pick **Bluetooth**, **USB**, or **Mock** from the dropdown.
-* **Bluetooth:** on the PM5, **More Options** → **Turn Wireless ON**.
-  **USB:** connect the PM5 to your computer.
-  **Mock:** nothing to set up — it replays a recorded workout on its own.
-* Click the **Connect** button. For Bluetooth/USB, select the PM5 from the
-  browser's picker.
-* Give it a sec.
-* Click boxes to highlight them.
-* For Bluetooth/USB: set up a workout on the PM5, start rowing / skiing /
-  biking, and watch the numbers change. For Mock, the numbers start climbing
-  immediately (real-time by default, looping) — a speed dropdown (1x–16x)
-  appears next to Connect and can be changed live while replaying.
+## Getting it into your project
 
-Tested on Chrome on macOS. [Source on GitHub].
+This isn't published to npm. Copy the files you need out of `lib/` into your
+own project and load them as plain `<script>` tags, in this order:
 
-## Repo layout
-
-```
-lib/            reusable, DOM-free library (protocol + data)
-example/        the demo app (all DOM-touching code)
-test/           node tests for the lib/ modules
+```html
+<script src="pm5-ble.js"></script>   <!-- PM5, if you want Bluetooth -->
+<script src="pm5-hid.js"></script>   <!-- PM5HID, if you want USB -->
+<script src="pm5-mock.js"></script>  <!-- PM5Mock, if you want the no-hardware mock -->
+<script src="pm5-fields.js"></script> <!-- pm5fields/pm5printables, needed by all of the above -->
+<script src="your-app.js"></script>
 ```
 
-`lib/` has no dependency on `example/` — it's meant to be reused by other PM5
-apps in this repo family.
+Only take what you need — e.g. a USB-only app can skip `pm5-ble.js` and
+`pm5-mock.js`. `pm5-fields.js` has no dependency on the others and is required
+by any of them (it's how you turn a raw data key into a label and a formatted
+value — see below).
 
-## Transport classes
+## The shared interface
 
-All three transports are standalone ES2020+ classes (`extends EventTarget`)
-exposing the **same interface**, so the app is transport-agnostic:
-
-* `PM5` (`lib/pm5-ble.js`) — Web Bluetooth GATT.
-* `PM5HID` (`lib/pm5-hid.js`) — Web HID / USB, CSAFE protocol.
-* `PM5Mock` (`lib/pm5-mock.js`) — replays a normalized sample array as BLE- or
-  HID-shaped events; no hardware.
+`PM5`, `PM5HID`, and `PM5Mock` all expose the same shape, so your app code
+doesn't need to branch on which transport it's using:
 
 ```js
-const monitor = new PM5();        // or new PM5HID(), or new PM5Mock({...})
+const monitor = new PM5();   // or new PM5HID(), or new PM5Mock({ ... })
 
-monitor.addEventListener('connecting',   () => { });
+monitor.addEventListener('connecting',   () => { /* picker about to open */ });
 monitor.addEventListener('connected',    e  => console.log(e.data)); // monitor info
-monitor.addEventListener('disconnected', () => { });
+monitor.addEventListener('disconnected', () => { /* link dropped */ });
 
-await monitor.connect();          // BLE/HID prompt the browser's device picker
-for (const type of monitor.MESSAGE_EVENTS ?? monitor.constructor.MESSAGE_EVENTS)
-    monitor.addEventListener(type, e => console.log(e.type, e.data));
+// connect() must be called from a user gesture (click handler) for BLE/HID,
+// since it opens the browser's device picker.
+await monitor.connect();
+
+// MESSAGE_EVENTS lists the data event types this transport emits. PM5/PM5HID
+// expose it as a static; PM5Mock sets it per instance (its shape depends on
+// the `emulate` option), so check the instance first:
+const events = monitor.MESSAGE_EVENTS ?? monitor.constructor.MESSAGE_EVENTS;
+for (const type of events) {
+    monitor.addEventListener(type, event => console.log(event.type, event.data));
+}
 
 monitor.disconnect();
-monitor.connected();              // → boolean
+monitor.connected();   // → boolean
 ```
 
-All async operations use `async/await`. Events are dispatched as native `Event`
-objects with `event.type` and `event.data` (BLE data events also carry
-`event.source` and `event.raw`). `MESSAGE_EVENTS` lists the data event types a
-transport emits — BLE multiplexes everything onto `multiplexed-information`;
-HID emits `workout` and `stroke`; Mock emits whichever of those two shapes its
-`emulate` option picked. `PM5`/`PM5HID` expose `MESSAGE_EVENTS` as a static;
-`PM5Mock` sets it per instance (since it depends on `emulate`), so callers
-should check the instance first and fall back to the static, as above.
+All async operations use `async`/`await`. Events are dispatched as native
+`Event` objects with `event.type` and `event.data`; BLE data events also carry
+`event.source` and `event.raw` (the underlying `DataView`).
 
-### Mock: replaying workout data
+## Transports
+
+### `PM5` — Bluetooth (`lib/pm5-ble.js`)
+
+Requires a [Web Bluetooth]-capable browser (Chrome/Edge) and the PM5's
+wireless turned on (**More Options** → **Turn Wireless ON**). Emits all data
+under one event type, `multiplexed-information` — real hardware multiplexes
+every rowing sub-message onto a single characteristic.
+
+```js
+const monitor = new PM5();
+monitor.addEventListener('multiplexed-information', e => console.log(e.data));
+await monitor.connect(); // prompts the Bluetooth device picker
+```
+
+### `PM5HID` — USB (`lib/pm5-hid.js`)
+
+Requires Chrome or Edge (Web HID isn't supported in Firefox/Safari) and the
+PM5 connected by USB. Polls the device at 100ms and emits two event types:
+`workout` (full frame, every 5th tick) and `stroke` (lighter, every tick).
+
+```js
+const monitor = new PM5HID();
+monitor.addEventListener('workout', e => console.log(e.data));
+monitor.addEventListener('stroke',  e => console.log(e.data));
+await monitor.connect(); // prompts the HID device picker
+```
+
+### `PM5Mock` — no hardware (`lib/pm5-mock.js`)
+
+Replays a recorded workout as either BLE- or HID-shaped events, so you can
+build and demo against real-looking live data without a PM5. See
+[Developing without hardware](#developing-without-hardware-pm5mock) below.
+
+## Reading the data
+
+Every event's `event.data` is a plain object keyed by field name (e.g.
+`elapsedTime`, `distance`, `heartRate`). `pm5fields` (from `pm5-fields.js`)
+maps each key to a human label and a formatter function; look a key up before
+trusting it's one you care about, since transports emit fields your app may
+not display:
+
+```js
+monitor.addEventListener(type, event => {
+    for (const [key, value] of Object.entries(event.data)) {
+        if (!(key in pm5fields)) continue;
+        console.log(pm5fields[key].label, '=', pm5fields[key].printable(value));
+    }
+});
+```
+
+`pm5fields` is the union of every transport's fields — BLE and HID use
+different key names for overlapping data (e.g. BLE `strokeRate` vs HID
+`cadence`), so most keys coexist without collision. A handful of keys
+(`workoutType`, `workoutState`, `strokeState`, `dragFactor`, `heartRate`) are
+shared verbatim across transports.
+
+## Developing without hardware: `PM5Mock`
 
 ```js
 const monitor = new PM5Mock({
-    loadSamples: () => csvSource.loadFromUrl('../lib/mock-data/concept2-result-44214428.csv'),
-    emulate: 'ble',   // or 'hid'
+    loadSamples: () => csvSource.loadFromUrl('mock-data/concept2-result-44214428.csv'),
+    emulate: 'ble',   // or 'hid' — which event shape to emit
     speed: 1,         // wall-clock multiplier (default 1 = real-time)
     loop: true,       // restart at the end
 });
 
-monitor.setSpeed(8);  // adjust live, takes effect from the next sample onward
+monitor.setSpeed(8);  // adjust live; takes effect from the next sample onward
 ```
 
-`PM5Mock` doesn't know or care where samples come from — pass a pre-loaded
+`PM5Mock` has no knowledge of where samples come from — pass a pre-loaded
 `samples` array, or an async `loadSamples()`. The only source shipped today is
 `lib/mock-data/csv-source.js`, which parses a real Concept2 workout CSV export
 (`lib/mock-data/concept2-result-44214428.csv`) into the normalized sample shape
-`PM5Mock` replays. A faithful live source — the Concept2 Logbook API — is a
-planned separate future project that would plug into the same `loadSamples`
-seam with no changes to `pm5-mock.js`.
-
-In the example app, a speed dropdown (1x–16x, next to Connect) only appears
-when Mock is selected and calls `setSpeed()` live.
+`PM5Mock` replays: `{ t, distance, pace, watts, calPerHour, strokeRate,
+heartRate }`. A future source (e.g. the Concept2 Logbook API) would be a
+sibling module producing the same shape — no changes to `pm5-mock.js` needed.
 
 ## Tests
 
 The pure `lib/` modules (field/formatter maps, CSV parsing, sample mapping)
-have node tests (no browser or hardware):
+have node tests, no browser or hardware required:
 
 ```
 node --test
 ```
 
 [Concept2 PM5]: https://www.concept2.com/indoor-rowers/performance-monitors
-[Web Bluetooth support]: https://caniuse.com/#feat=web-bluetooth
-[PM5]: https://www.concept2.com/indoor-rowers/performance-monitors
-[Concept2 ergometer]: https://www.concept2.com
-[Source on GitHub]: https://github.com/ergarcade/pm5-base
+[Web Bluetooth]: https://caniuse.com/#feat=web-bluetooth
