@@ -64,8 +64,10 @@ populate. Mock can be verified the same way without hardware.
 ## Setting up a new product repo
 
 Spinning up a new ergarcade product built on this library (repo creation,
-submodule, topics) is a checklist, not something to re-derive — see
-README.md's "Setting up a new ergarcade product repo" section.
+submodule, topics, README stub) is a checklist, not something to re-derive —
+use the `new-product-repo` skill (`.claude/skills/new-product-repo/SKILL.md`).
+It covers only that scaffolding, not the app itself. README.md keeps a short
+version of the same steps.
 
 ## Architecture
 
