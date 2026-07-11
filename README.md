@@ -171,6 +171,34 @@ product repo meant to receive ongoing updates, use a git submodule instead —
    in library updates later.
 5. Commit and push.
 
+## Reference: the CSAFE spec
+
+`lib/pm5-hid.js` (and `lib/pm5-ble.js`'s cross-reference comments) implement
+commands from Concept2's own protocol document, [Concept2 PM CSAFE
+Communication Definition][csafe-spec] (PDF, © Concept2 — publicly downloadable
+for third-party developers, not redistributed here).
+
+It's 173 pages, so re-fetching and re-reading it from scratch each time it's
+needed is wasteful. Instead, download it once and convert it to
+`docs/csafe-spec.txt` for local reference — both `docs/csafe-spec.pdf` and
+`docs/csafe-spec.txt` are git-ignored (not committed, since this repo is
+public) but persist on disk for reuse in later sessions:
+
+```
+curl -sL -o docs/csafe-spec.pdf "https://cms.concept2.com/sites/default/files/2026-03/Concept2%20PM%20CSAFE%20Communication%20Definition.pdf"
+pip install --user pypdf
+python3 -c "
+from pypdf import PdfReader
+r = PdfReader('docs/csafe-spec.pdf')
+with open('docs/csafe-spec.txt', 'w') as f:
+    for i, page in enumerate(r.pages):
+        f.write(f'\n\n===== Page {i+1} =====\n\n')
+        f.write(page.extract_text() or '')
+"
+```
+
+[csafe-spec]: https://cms.concept2.com/sites/default/files/2026-03/Concept2%20PM%20CSAFE%20Communication%20Definition.pdf
+
 ## Tests
 
 The pure `lib/` modules (field/formatter maps, CSV parsing, sample mapping)
