@@ -34,7 +34,7 @@ jobs:
           mkdir -p _site
           cp -r example/. _site/
           cp -r lib _site/lib
-          sed -i 's#\.\./lib/#lib/#g' _site/index.html
+          find _site -maxdepth 1 -type f \( -name '*.html' -o -name '*.js' \) -exec sed -i 's#\.\./lib/#lib/#g' {} +
       - uses: actions/upload-pages-artifact@v5.0.0
 
   deploy:
