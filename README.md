@@ -145,31 +145,26 @@ sibling module producing the same shape — no changes to `pm5-mock.js` needed.
 ## Setting up a new ergarcade product repo
 
 For a one-off script, copying files out of `lib/` (above) is fine. For a full
-product repo meant to receive ongoing updates, use a git submodule instead —
-`ergarcade/recorder` is the reference example:
+product repo meant to receive ongoing updates, use a git submodule instead.
+Use the `new-product-repo` Claude Code skill
+(`.claude/skills/new-product-repo/SKILL.md`) rather than re-deriving this —
+short version:
 
 1. Create the repo, named after the product (not `pm5-<name>` — that prefix is
    legacy from the pre-submodule `pm5-overlay`/`pm5-detail`/`pm5-dump` repos,
    which are being phased out). Defaults to private; make it public later with
-   `gh repo edit --visibility public` once it's ready:
-   ```
-   gh repo create ergarcade/<name> --private --license mit --add-readme --clone
-   ```
-   Keep whatever default branch `gh` assigns (e.g. `main`) rather than
-   renaming it to match older repos.
-2. Add this repo as a submodule tracking `master`:
-   ```
-   git submodule add -b master https://github.com/ergarcade/pm5-base.git pm5-base
-   ```
-3. Set topics for discoverability — `concept2`, `pm5`, and the product name:
-   ```
-   gh api -X PUT repos/ergarcade/<name>/topics -f 'names[]=concept2' -f 'names[]=pm5' -f 'names[]=<name>'
-   ```
-4. Document the submodule clone/update steps in the new repo's own README:
-   `git clone --recurse-submodules ...` (or `git submodule update --init` after
-   a plain clone) to get it, `git submodule update --remote pm5-base` to pull
-   in library updates later.
+   `gh repo edit --visibility public` once it's ready.
+2. Add this repo as a submodule tracking `master`.
+3. Set topics for discoverability — `concept2`, `pm5`, and the product name.
+4. Write a README stub documenting the submodule clone/update steps
+   (`git clone --recurse-submodules ...` or `git submodule update --init` to
+   get it, `git submodule update --remote pm5-base` to pull in library
+   updates later).
 5. Commit and push.
+
+`ergarcade/recorder` and `ergarcade/virtual-monitor` are worked examples.
+This only covers the repo scaffolding — the app itself is a separate
+conversation once the repo exists.
 
 ## Reference: the CSAFE spec
 
