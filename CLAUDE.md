@@ -29,6 +29,7 @@ lib/                  reusable, DOM-free protocol/data code
   pm5-fields.js
   mock-data/
     csv-source.js
+    events-source.js
     concept2-result-44214428.csv
 example/               the demo app (all DOM-touching code)
   index.html
@@ -91,41 +92,63 @@ matters — no module system):
    tick, a full workout frame every 5th tick). Dispatches its data as `workout`
    and `stroke` events. Also zero DOM dependencies.
 3. **`lib/pm5-mock.js`** — `PM5Mock`, an `EventTarget` subclass replaying a
-   normalized sample array as either BLE- or HID-shaped events (`emulate: 'ble'
-   | 'hid'`, default `'ble'`). It has **no knowledge of where samples come
-   from** — the constructor takes either a pre-loaded `samples` array or an
-   async `loadSamples()` — so it stays a pure replay engine (chained
-   `setTimeout`, honoring real inter-sample gaps scaled by a `speed`
-   multiplier, default `1` = real-time; optional `loop`). `setSpeed(n)` adjusts
-   it live, taking effect from the next scheduled sample onward. A normalized
-   sample is
-   `{ t, distance, pace, watts, calPerHour, strokeRate, heartRate }` (any field
-   but `t` may be `undefined`); `_toBleGeneralStatus`/`_toBleAdditionalStatus`/
-   `_toBleAdditionalStrokeData`/`_toHid` map it to the same field keys
-   `pm5fields` already defines for the real transports, omitting keys whose
-   value is `undefined` so nothing renders for missing HR/stroke-rate/
-   caloric-burn-rate readings. For BLE, each replay tick dispatches **three**
-   `multiplexed-information` events — one shaped like real general-status
-   (`elapsedTime`, `distance`), one like additional-status (`elapsedTime`,
-   `currentPace`, `averagePower`, `strokeRate`, `heartRate`), one like
-   additional-stroke-data (`elapsedTime`, `strokeCaloricBurnRate`) — mirroring
-   how real hardware demuxes distinct sub-messages onto that one event type
-   rather than bundling every field into a single dispatch (see Protocol
-   notes). HID stays a single `workout` dispatch per tick, since that's how
-   the real USB protocol actually behaves (one polled frame, many chained
-   CSAFE commands, one combined response); HID has no caloric-burn-rate
-   field, only a cumulative `calories` total, so `calPerHour` goes unmapped
-   there.
-   `MESSAGE_EVENTS` is set **per instance** (not static, unlike `PM5`/`PM5HID`)
-   since its shape depends on `emulate` — see the app.js note below.
-   - **`lib/mock-data/csv-source.js`** — the first (and currently only) sample
-     source: `parseCsv(text)` parses a Concept2 workout CSV export into the
-     normalized sample array, and `loadFromUrl(url)` fetches + parses it. A
-     future source (e.g. the Concept2 Logbook API, a separate future project)
-     would be a sibling module producing the same array shape and passed to
-     `PM5Mock` via `loadSamples`; no changes to `pm5-mock.js` needed. A
-     synthetic (non-recorded) generator was deliberately skipped — YAGNI, add
-     one behind the same `loadSamples` seam if/when needed.
+   flat, already transport-shaped raw event list — `[{ t, type, data }]`, `t`
+   = elapsed ms since replay start — through one chained-`setTimeout` engine
+   (`#scheduleNext`), honoring real inter-event gaps scaled by a `speed`
+   multiplier (default `1` = real-time; optional `loop`). `setSpeed(n)`
+   adjusts it live, taking effect from the next scheduled event onward. It
+   has **no knowledge of where that list comes from** — two mutually
+   exclusive ways in:
+   - **Reduced samples** (`samples`/`loadSamples`, pre-loaded array or async
+     loader) — `{ t, distance, pace, watts, calPerHour, strokeRate,
+     heartRate }` (any field but `t` may be `undefined`), synthesized into
+     the raw event list by `_toRawEvents(samples, emulate)` (`emulate:
+     'ble' | 'hid'`, default `'ble'`, since samples carry no transport info
+     of their own). `_toBleGeneralStatus`/`_toBleAdditionalStatus`/
+     `_toBleAdditionalStrokeData`/`_toHid` map a sample to the same field
+     keys `pm5fields` defines for the real transports, omitting keys whose
+     value is `undefined` so nothing renders for missing HR/stroke-rate/
+     caloric-burn-rate readings. For BLE, each sample synthesizes **three**
+     `multiplexed-information` raw events — general-status (`elapsedTime`,
+     `distance`), additional-status (`elapsedTime`, `currentPace`,
+     `averagePower`, `strokeRate`, `heartRate`), additional-stroke-data
+     (`elapsedTime`, `strokeCaloricBurnRate`) — mirroring how real hardware
+     demuxes distinct sub-messages onto that one event type rather than
+     bundling every field into a single dispatch (see Protocol notes). HID
+     synthesizes a single `workout` event per sample, since that's how the
+     real USB protocol actually behaves (one polled frame, many chained
+     CSAFE commands, one combined response); HID has no caloric-burn-rate
+     field, only a cumulative `calories` total, so `calPerHour` goes
+     unmapped there.
+   - **Raw events** (`events`/`loadEvents`, same pre-loaded-or-async
+     shape) — used verbatim, no synthesis, since each entry already carries
+     the real dispatched type/data. This is what a full-fidelity recording
+     (every field a real transport actually reported, not just the seven
+     reduced-sample fields) replays through.
+
+   `MESSAGE_EVENTS` is set **per instance** (not static, unlike `PM5`/
+   `PM5HID`) — derived as `[...new Set(rawEvents.map(e => e.type))]` once
+   the data is in hand, so it always reflects what's actually going to be
+   dispatched rather than being hardcoded from `emulate`. Set synchronously
+   in the constructor when `samples`/`events` are given directly (tests rely
+   on this), or once `connect()` resolves an async loader — always before
+   `connected` is dispatched, which is the only point app.js reads it (see
+   the app.js note below).
+   - **`lib/mock-data/csv-source.js`** — parses a Concept2 workout CSV
+     export into the reduced sample array: `parseCsv(text)`, plus
+     `loadFromUrl(url)`/`loadFromFile(file)` wrappers.
+   - **`lib/mock-data/events-source.js`** — parses our own JSON event
+     export (see `ergarcade/recorder`'s `events.js`) into the raw event
+     list: `parseJson(text)` relativizes the recorded wall-clock `t` (each
+     event's `Date.now()` at capture) to start at 0, matching the
+     elapsed-ms-since-start baseline `_toRawEvents` also produces, plus a
+     `loadFromFile(file)` wrapper.
+   - A future sample source (e.g. the Concept2 Logbook API, a separate
+     future project) would be a sibling module to `csv-source.js` producing
+     the same reduced-sample array and passed to `PM5Mock` via
+     `loadSamples`; no changes to `pm5-mock.js` needed. A synthetic
+     (non-recorded) generator was deliberately skipped — YAGNI, add one
+     behind the same `loadSamples`/`loadEvents` seam if/when needed.
 4. **`lib/pm5-fields.js`** — pure data/formatting layer, no DOM or transport
    code. `pm5printables` holds formatter functions (units, enums-to-labels, time
    formatting). `pm5fields` maps each data key (from any transport) to a
@@ -178,12 +201,18 @@ needed.
 
 ### Adding another mock data source
 
-Write a sibling module to `lib/mock-data/csv-source.js` that produces the same
-normalized sample array (`{ t, distance, pace, watts, calPerHour, strokeRate,
-heartRate }`), then pass it to `PM5Mock` via `loadSamples` (or pre-load it and
-pass `samples` directly). No changes to `pm5-mock.js` needed. The Concept2
-Logbook API (OAuth) is the planned faithful future source — a separate future
-project — feeding the same seam.
+For a reduced-sample source: write a sibling module to
+`lib/mock-data/csv-source.js` that produces the same normalized sample array
+(`{ t, distance, pace, watts, calPerHour, strokeRate, heartRate }`), then
+pass it to `PM5Mock` via `loadSamples` (or pre-load it and pass `samples`
+directly). No changes to `pm5-mock.js` needed. The Concept2 Logbook API
+(OAuth) is the planned faithful future source — a separate future project —
+feeding the same seam.
+
+For a full-fidelity source: write a sibling module to
+`lib/mock-data/events-source.js` that produces the same raw event array
+(`[{ t, type, data }]`, `t` relativized to start at 0), then pass it via
+`loadEvents`/`events`. No changes to `pm5-mock.js` needed here either.
 
 ## Protocol notes worth knowing before touching the transport classes
 
@@ -202,12 +231,14 @@ project — feeding the same seam.
   `SETUSERCFG1` (0x1a). See the Concept2 PM CSAFE Communication Definition (SDK).
 - **Mock (`pm5-mock.js`)**: not a protocol at all — it's a data replay engine.
   The interesting design point is the separation between the replay engine
-  (transport-shaped, protocol-agnostic) and the sample source (currently CSV,
-  future Logbook API): they only agree on the normalized sample shape. On the
-  BLE side it also mirrors the real demux split (general-status vs
-  additional-status vs additional-stroke-data) rather than bundling every
-  field into one event — worth checking again if another BLE sub-message type
-  ever needs emulating.
+  (a single flat raw-event list, transport/source-agnostic) and where that
+  list comes from: either synthesized from reduced samples (CSV today,
+  future Logbook API) via `_toRawEvents`, or read verbatim from a
+  full-fidelity JSON recording (`events-source.js`) that already carries
+  real type/data. On the BLE synthesis side it also mirrors the real demux
+  split (general-status vs additional-status vs additional-stroke-data)
+  rather than bundling every field into one event — worth checking again if
+  another BLE sub-message type ever needs emulating.
 - The transports report overlapping data under **different key names** (e.g.
   BLE `strokeRate` vs HID `cadence`, BLE `currentPace`/`averagePace` vs HID
   `pace`), so most keys coexist without collision. Only the five shared keys
