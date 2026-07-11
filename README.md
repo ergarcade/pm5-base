@@ -49,8 +49,8 @@ monitor.addEventListener('disconnected', () => { /* link dropped */ });
 await monitor.connect();
 
 // MESSAGE_EVENTS lists the data event types this transport emits. PM5/PM5HID
-// expose it as a static; PM5Mock sets it per instance (its shape depends on
-// the `emulate` option), so check the instance first:
+// expose it as a static; PM5Mock sets it per instance, derived from whatever
+// it's actually replaying, so check the instance first:
 const events = monitor.MESSAGE_EVENTS ?? monitor.constructor.MESSAGE_EVENTS;
 for (const type of events) {
     monitor.addEventListener(type, event => console.log(event.type, event.data));
@@ -123,10 +123,30 @@ shared verbatim across transports.
 
 ## Developing without hardware: `PM5Mock`
 
+`PM5Mock` replays either of two shapes, and has no knowledge of where either
+comes from:
+
+- **Reduced samples** (`samples`/`loadSamples`) — `{ t, distance, pace,
+  watts, calPerHour, strokeRate, heartRate }`, synthesized into BLE- or
+  HID-shaped events per the `emulate` option since samples carry no
+  type/transport info of their own. The shipped source is
+  `lib/mock-data/csv-source.js`, which parses a real Concept2 workout CSV
+  export (`lib/mock-data/concept2-result-44214428.csv`, or any Concept2
+  Logbook CSV via `parseCsv`/`loadFromFile`/`loadFromUrl`) into that shape.
+- **Raw events** (`events`/`loadEvents`) — `[{ t, type, data }]`, replayed
+  verbatim with no synthesis, since each entry already carries the real
+  dispatched type/data (higher fidelity than the reduced samples — every
+  field the original transport reported, not just the seven above).
+  `lib/mock-data/events-source.js`'s `parseJson`/`loadFromFile` reads this
+  shape from a JSON export (see `ergarcade/recorder`'s Export Events).
+  `emulate` is irrelevant here — `MESSAGE_EVENTS` is derived from whatever
+  types the file actually contains.
+
 ```js
 const monitor = new PM5Mock({
     loadSamples: () => csvSource.loadFromUrl('mock-data/concept2-result-44214428.csv'),
-    emulate: 'ble',   // or 'hid' — which event shape to emit
+    // or: loadEvents: () => eventsSource.loadFromFile(uploadedFile),
+    emulate: 'ble',   // or 'hid' — which event shape to synthesize (samples only)
     speed: 1,         // wall-clock multiplier (default 1 = real-time)
     loop: true,       // restart at the end
 });
@@ -134,13 +154,9 @@ const monitor = new PM5Mock({
 monitor.setSpeed(8);  // adjust live; takes effect from the next sample onward
 ```
 
-`PM5Mock` has no knowledge of where samples come from — pass a pre-loaded
-`samples` array, or an async `loadSamples()`. The only source shipped today is
-`lib/mock-data/csv-source.js`, which parses a real Concept2 workout CSV export
-(`lib/mock-data/concept2-result-44214428.csv`) into the normalized sample shape
-`PM5Mock` replays: `{ t, distance, pace, watts, calPerHour, strokeRate,
-heartRate }`. A future source (e.g. the Concept2 Logbook API) would be a
-sibling module producing the same shape — no changes to `pm5-mock.js` needed.
+A future sample source (e.g. the Concept2 Logbook API) would be a sibling
+module to `csv-source.js` producing the same reduced-sample shape — no
+changes to `pm5-mock.js` needed either way.
 
 ## Setting up a new ergarcade product repo
 
@@ -196,8 +212,9 @@ with open('docs/csafe-spec.txt', 'w') as f:
 
 ## Tests
 
-The pure `lib/` modules (field/formatter maps, CSV parsing, sample mapping)
-have node tests, no browser or hardware required:
+The pure `lib/` modules (field/formatter maps, CSV/JSON parsing, sample
+mapping, and `PM5Mock`'s replay engine itself, driven end-to-end with real
+timers) have node tests, no browser or hardware required:
 
 ```
 node --test
