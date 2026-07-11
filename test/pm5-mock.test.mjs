@@ -56,6 +56,15 @@ test('_toBleGeneralStatus and _toBleAdditionalStatus never overlap except elapse
     assert.deepEqual(overlap, ['elapsedTime']);
 });
 
+test('_toBleAdditionalStrokeData omits undefined fields and only emits known pm5fields keys', () => {
+    const withRate    = PM5Mock._toBleAdditionalStrokeData({ t: 10, calPerHour: 576 });
+    const withoutRate = PM5Mock._toBleAdditionalStrokeData({ t: 0.7, calPerHour: undefined });
+
+    assert.deepEqual(withRate, { elapsedTime: 10, strokeCaloricBurnRate: 576 });
+    assert.deepEqual(withoutRate, { elapsedTime: 0.7 });
+    for (const k of Object.keys(withRate)) assert.ok(k in pm5fields, `missing key ${k}`);
+});
+
 test('_toHid omits undefined fields and only emits known pm5fields keys', () => {
     const withHr    = PM5Mock._toHid({ t: 10, distance: 20, pace: 150, watts: 100, strokeRate: 24, heartRate: 142 });
     const withoutHr = PM5Mock._toHid({ t: 0.7, distance: 2.4, pace: 163.3, watts: 80, strokeRate: undefined, heartRate: undefined });
