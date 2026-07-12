@@ -91,7 +91,13 @@ const getOrCreateCard = (id, title) => {
     return div;
 };
 
-const setField = (div, k, v) => {
+// `ergMachineType` is only relevant to the pace fields' printable (bike vs
+// rower/ski pace unit); every other field's printable ignores the extra
+// arg. It's undefined unless this event happens to carry it itself --
+// BLE's additional-status bundles ergMachineType alongside currentPace/
+// averagePace in the same payload, so it's simplest to just read it off
+// the same event rather than tracking it as separate running state.
+const setField = (div, k, v, ergMachineType) => {
     let s = div.querySelector(`.field-value.${k}`);
     if (!s) {
         const p = document.createElement('div');
@@ -110,7 +116,7 @@ const setField = (div, k, v) => {
 
         p.addEventListener('click', () => p.classList.toggle('highlight'));
     }
-    s.textContent = pm5fields[k].printable(v);
+    s.textContent = pm5fields[k].printable(v, ergMachineType);
 };
 
 // Two card layouts: grouped by the transport's event type (matches how the
@@ -120,14 +126,14 @@ const cbMessage = (event) => {
     if (el('#split-metrics').checked) {
         for (const [k, v] of Object.entries(event.data)) {
             if (!(k in pm5fields)) continue;
-            setField(getOrCreateCard(`metric-${k}`, pm5fields[k].label), k, v);
+            setField(getOrCreateCard(`metric-${k}`, pm5fields[k].label), k, v, event.data.ergMachineType);
         }
         return;
     }
 
     const div = getOrCreateCard(event.type, formatCardTitle(event.type));
     for (const [k, v] of Object.entries(event.data)) {
-        if (k in pm5fields) setField(div, k, v);
+        if (k in pm5fields) setField(div, k, v, event.data.ergMachineType);
     }
 };
 

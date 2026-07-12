@@ -21,9 +21,29 @@ test('shared enum tables resolve for both transports', () => {
 
 test('HID-unique formatters present', () => {
     assert.equal(pm5printables.deviceStatus(5), 'In Use');
-    assert.equal(pm5printables.pace500m(125), '2:05/500m');
-    assert.equal(pm5printables.pace500m(0), '--:--');
+    assert.equal(pm5printables.pace(125), '2:05/500m');
+    assert.equal(pm5printables.pace(0), '--:--');
     assert.equal(pm5printables.spm(24), '24 spm');
+});
+
+test('pace defaults to /500m when no machine type is given (HID, or a BLE event without ergMachineType)', () => {
+    assert.equal(pm5printables.pace(125), '2:05/500m');
+    assert.equal(pm5printables.pace(125, undefined), '2:05/500m');
+});
+
+test('pace defaults to /500m for a non-bike ergMachineType (e.g. rower, ski)', () => {
+    assert.equal(pm5printables.pace(125, 0), '2:05/500m');   // Static D (rower)
+    assert.equal(pm5printables.pace(125, 128), '2:05/500m'); // Static Ski
+});
+
+test('pace doubles the raw value and switches to /1000m for every bike ergMachineType', () => {
+    for (const bike of [192, 193, 194, 207]) {
+        assert.equal(pm5printables.pace(125, bike), '4:10/1000m');
+    }
+});
+
+test('pace still shows the empty-reading sentinel on a bike', () => {
+    assert.equal(pm5printables.pace(0, 192), '--:--');
 });
 
 test('both transports\' keys are all present in the merged map', () => {

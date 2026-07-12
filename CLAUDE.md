@@ -159,8 +159,30 @@ matters — no module system):
    (`workoutType`, `workoutState`, `strokeState`, `dragFactor`, `heartRate`)
    have a single entry. **`heartRate` is the one reconciled formatter**: BLE
    reports no-belt as 255, HID as 0, so the merged formatter treats both as
-   `N/A` (pinned by the test). A `typeof module` export shim at the end lets
-   the node tests import the maps; it is a no-op in the browser.
+   `N/A` (pinned by the test). **`pace` is the other one with a wrinkle**:
+   the CSAFE spec defines every pace command as seconds/500m unconditionally
+   for every machine type (no bike-specific branch in the protocol), but
+   Concept2's own BikeErg convention displays pace per 1000m, not 500m — a
+   bike covers 500m too fast for that unit to be meaningful. So
+   `pm5printables.pace(secs, ergMachineType)` takes an optional second
+   argument: given a bike `ergMachineType` (192/193/194/207 — see
+   `ergMachineType`'s own enum below), it doubles `secs` and labels the
+   result `/1000m` instead of `/500m`. Every other field's printable ignores
+   a second argument, so callers can pass it unconditionally
+   (`pm5fields[k].printable(v, ergMachineType)`) without special-casing
+   pace. `ergMachineType` is BLE-only and only known for events that happen
+   to carry it — conveniently, BLE's additional-status bundles it alongside
+   `currentPace`/`averagePace` in the very same payload (see
+   `_extractAdditionalStatus` in `pm5-ble.js`), so `event.data.ergMachineType`
+   is right there with no extra state to track; omit it (HID, or any BLE
+   event that doesn't carry it) and `pace` falls back to `/500m`. HID has no
+   equivalent query for machine type at all (`CSAFE_PM_GET_ERGMACHINETYPE`,
+   0xED, isn't in `pm5-hid.js`'s polled command set), so HID's own `pace`
+   field always shows `/500m` — a known gap, not a regression, left as a
+   TODO rather than risking an unverified change to HID's command framing
+   without real hardware to test against. A `typeof module` export shim at
+   the end lets the node tests import the maps; it is a no-op in the
+   browser.
 5. **`example/app.js`** — the only DOM-touching layer, and it is
    **transport-agnostic**. All three classes expose the same interface — public
    `connect()` / `disconnect()` / `connected()`, lifecycle events
@@ -178,6 +200,9 @@ matters — no module system):
    a protocol distinction; toggling it clears `#notifications` so the next
    event rebuilds under the new grouping) and one `.field` row per data key
    (looked up in `pm5fields`, created lazily), skipping keys not in the map.
+   `setField` passes `event.data.ergMachineType` through to every field's
+   `printable` call so pace fields can use it (see `pm5-fields.js` above) —
+   harmless for every other field, which just ignores the extra argument.
    Clicking a field row toggles `.highlight`. A `<select id="mock-speed">`
    (hidden unless Mock is selected) sets the initial `speed` when building
    `PM5Mock` and calls its `setSpeed()` live on change — the one Mock-specific
