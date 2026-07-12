@@ -9,6 +9,7 @@
         <script src="../lib/pm5-hid.js"></script>
         <script src="../lib/pm5-mock.js"></script>
         <script src="../lib/mock-data/csv-source.js"></script>
+        <script src="../lib/mock-data/events-source.js"></script>
         <script src="../lib/pm5-fields.js"></script>
         <script src="app.js"></script>
 
@@ -31,6 +32,7 @@
                     <option value="8">8x</option>
                     <option value="16">16x</option>
                 </select>
+                <input type="file" id="mock-file" aria-label="Workout file to replay (Concept2 Logbook CSV or our own JSON export)" accept=".csv,.json" hidden>
                 <button id="connect">Connect</button>
                 <label id="split-metrics-label">
                     <input type="checkbox" id="split-metrics">

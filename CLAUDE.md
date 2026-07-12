@@ -180,9 +180,15 @@ matters — no module system):
    (looked up in `pm5fields`, created lazily), skipping keys not in the map.
    Clicking a field row toggles `.highlight`. A `<select id="mock-speed">`
    (hidden unless Mock is selected) sets the initial `speed` when building
-   `PM5Mock` and calls its `setSpeed()`
-   live on change — the one Mock-specific control, since `setSpeed` isn't part
-   of the shared transport interface.
+   `PM5Mock` and calls its `setSpeed()` live on change — the one Mock-specific
+   control, since `setSpeed` isn't part of the shared transport interface.
+   `<input type="file" id="mock-file">` (same visibility rule, disabled while
+   connected like `#transport`) is the other: `TRANSPORTS.mock.build()` reads
+   its selected file and picks `loadEvents` (`.json`, `eventsSource
+   .loadFromFile`) or `loadSamples` (anything else, `csvSource.loadFromFile`)
+   accordingly, falling back to the shipped demo CSV via `loadSamples` when
+   nothing's chosen — so a workout recorded by `ergarcade/recorder` (either
+   export format) can be replayed here.
 
 `example/index.html` also holds an instructions panel implemented as a native
 `<dialog>` (`#instruction-text`), opened via `showModal()`/`close()` — no custom

@@ -35,7 +35,10 @@ then visit `http://localhost:8000/example/`.
 * For Bluetooth/USB: set up a workout on the PM5, start rowing / skiing /
   biking, and watch the numbers change. For Mock, the numbers start climbing
   immediately (real-time by default, looping) — a speed dropdown (1x–16x)
-  appears next to Connect and can be changed live while replaying.
+  appears next to Connect and can be changed live while replaying. A file
+  picker appears alongside it: choose a `.csv` (Concept2 Logbook export) or
+  `.json` (e.g. from `ergarcade/recorder`'s full-fidelity export) to replay
+  that instead of the shipped demo workout.
 * **Split metrics into cards** (checkbox next to Connect): by default, fields
   are grouped into one card per event type, matching how the data actually
   arrives on the wire (e.g. everything BLE reports lands under one
