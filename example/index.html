@@ -11,8 +11,10 @@
         <script src="../lib/mock-data/csv-source.js"></script>
         <script src="../lib/mock-data/events-source.js"></script>
         <script src="../lib/pm5-fields.js"></script>
+        <script src="../ui/info-modal.js"></script>
         <script src="app.js"></script>
 
+        <link rel="stylesheet" href="../ui/info-modal.css">
         <link rel="stylesheet" href="style.css">
     </head>
 
@@ -38,14 +40,13 @@
                     <input type="checkbox" id="split-metrics">
                     Split metrics into cards
                 </label>
-                <button id="toggle-instructions" class="secondary">Instructions</button>
                 <span id="monitor-information"></span>
             </div>
         </header>
 
         <main>
-            <dialog id="instruction-text">
-                <button id="close-instructions" class="secondary" aria-label="Close">&times;</button>
+            <dialog id="info-modal">
+                <button data-close aria-label="Close">&times;</button>
 
                 <p>
                 This application connects to a
@@ -74,6 +75,15 @@
                     <li>Click any field to highlight it.</li>
                     <li>Set up a workout on the PM5. Start rowing, skiing, or biking. Watch the numbers change.</li>
                 </ul>
+
+                <h2>Mock</h2>
+                <p>
+                Pick <strong>Mock</strong> to try it without hardware. Choose a replay speed, optionally
+                upload a previously recorded workout (a Concept2 Logbook <code>.csv</code> export, or a
+                <code>.json</code> export from <a target="_blank" href="https://github.com/ergarcade/recorder">recorder</a>),
+                and click <strong>Connect</strong>. Leave the file picker empty to replay a bundled demo
+                workout instead.
+                </p>
                 <p>
                 Tested on Chrome on macOS. <a target="_blank" href="https://github.com/ergarcade/pm5-base">Source on GitHub</a>.
                 </p>

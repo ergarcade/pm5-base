@@ -101,4 +101,9 @@ submodule, README` is enough — there's no app code yet to describe.
 
 Tell the user the repo is scaffolded and ready — then the actual app design
 (what it displays, its file layout, tests) is a fresh plan-and-build
-conversation, not a continuation of this checklist.
+conversation, not a continuation of this checklist. When that conversation
+gets to `index.html`, point at `pm5-base/README.md`'s "Shared header UI:
+ui/info-modal.js" section (and `pm5-base/example/` as the reference wiring)
+for the standard header: app name top left, transport controls top right, an
+"i" button next to the title opening a `<dialog id="info-modal">` describing
+the app and how Mock works.

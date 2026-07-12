@@ -1,0 +1,125 @@
+/* Self-contained: uses its own --pm5-ui-* tokens rather than each app's
+   theme variables (which use different names/values across apps), so this
+   drops into any header/dialog unchanged. */
+:root {
+    --pm5-ui-surface: #ffffff;
+    --pm5-ui-border:  #d4d4d8;
+    --pm5-ui-text:    #18181b;
+    --pm5-ui-muted:   #71717a;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --pm5-ui-surface: #1c1c1e;
+        --pm5-ui-border:  #3f3f46;
+        --pm5-ui-text:    #f2f2f7;
+        --pm5-ui-muted:   #a1a1aa;
+    }
+}
+
+/* Auto margin (not header's own justify-content) is what keeps this snug
+   against the <h1> while still pushing #controls to the far right,
+   regardless of how each app's header.style.css lays out its flex items. */
+header h1 + .info-toggle {
+    margin-right: auto;
+}
+
+.info-toggle {
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    border: 1px solid var(--pm5-ui-border);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--pm5-ui-muted);
+    font: italic 600 0.8rem/1 Georgia, serif;
+    cursor: pointer;
+}
+
+.info-toggle:hover {
+    color: var(--pm5-ui-text);
+    border-color: var(--pm5-ui-muted);
+}
+
+#info-modal {
+    position: fixed;
+    inset: 0;
+    max-width: 34rem;
+    max-height: 80vh;
+    margin: auto;
+    padding: 1.5rem;
+    background: var(--pm5-ui-surface);
+    color: var(--pm5-ui-text);
+    border: 1px solid var(--pm5-ui-border);
+    border-radius: 0.5rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    line-height: 1.65;
+    opacity: 0;
+    transform: scale(0.96);
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out, overlay 0.15s allow-discrete, display 0.15s allow-discrete;
+}
+
+#info-modal[open] {
+    opacity: 1;
+    transform: scale(1);
+}
+
+@starting-style {
+    #info-modal[open] {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+}
+
+#info-modal::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity 0.15s ease-out, overlay 0.15s allow-discrete, display 0.15s allow-discrete;
+}
+
+#info-modal[open]::backdrop {
+    opacity: 1;
+}
+
+@starting-style {
+    #info-modal[open]::backdrop {
+        opacity: 0;
+    }
+}
+
+#info-modal [data-close] {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    border: none;
+    background: transparent;
+    color: var(--pm5-ui-muted);
+    padding: 0.15rem 0.55rem;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+#info-modal [data-close]:hover {
+    color: var(--pm5-ui-text);
+}
+
+#info-modal h2 {
+    margin: 1rem 0 0.35rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+#info-modal h2:first-child {
+    margin-top: 0;
+}
+
+#info-modal p,
+#info-modal li {
+    font-size: 0.875rem;
+    color: var(--pm5-ui-muted);
+}
+
+#info-modal ul {
+    padding-left: 1.25rem;
+}

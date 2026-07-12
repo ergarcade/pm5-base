@@ -81,26 +81,13 @@ button {
     font-size: 0.875rem;
     font-weight: 500;
     line-height: 1.5;
+    background: var(--accent);
+    color: #fff;
     transition: background 0.12s, color 0.12s;
 }
 
-button:not(.secondary) {
-    background: var(--accent);
-    color: #fff;
-}
-
-button:not(.secondary):hover {
+button:hover {
     background: var(--accent-hover);
-}
-
-button.secondary {
-    background: transparent;
-    color: var(--text);
-    border: 1px solid var(--border);
-}
-
-button.secondary:hover {
-    background: var(--border);
 }
 
 #transport {
@@ -138,79 +125,6 @@ button.secondary:hover {
 
 main {
     padding: 1.25rem;
-}
-
-/* ── Instructions ── */
-
-#instruction-text {
-    position: fixed;
-    inset: 0;
-    max-width: 34rem;
-    max-height: 80vh;
-    margin: auto;
-    padding: 1.5rem;
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    line-height: 1.65;
-    opacity: 0;
-    transform: scale(0.96);
-    transition: opacity 0.15s ease-out, transform 0.15s ease-out, overlay 0.15s allow-discrete, display 0.15s allow-discrete;
-}
-
-#instruction-text[open] {
-    opacity: 1;
-    transform: scale(1);
-}
-
-@starting-style {
-    #instruction-text[open] {
-        opacity: 0;
-        transform: scale(0.96);
-    }
-}
-
-#instruction-text::backdrop {
-    background: rgba(0, 0, 0, 0.4);
-    opacity: 0;
-    transition: opacity 0.15s ease-out, overlay 0.15s allow-discrete, display 0.15s allow-discrete;
-}
-
-#instruction-text[open]::backdrop {
-    opacity: 1;
-}
-
-@starting-style {
-    #instruction-text[open]::backdrop {
-        opacity: 0;
-    }
-}
-
-#close-instructions {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    padding: 0.15rem 0.55rem;
-    font-size: 1.1rem;
-    line-height: 1;
-}
-
-#instruction-text h2 {
-    margin: 1rem 0 0.35rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-}
-
-#instruction-text p,
-#instruction-text li {
-    font-size: 0.875rem;
-    color: var(--text-muted);
-}
-
-#instruction-text ul {
-    padding-left: 1.25rem;
 }
 
 /* ── Notification grid ── */
