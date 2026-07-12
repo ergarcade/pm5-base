@@ -198,10 +198,5 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch((error) => { console.log(error); cbDisconnected(); });
     });
 
-    const instructionDialog = el('#instruction-text');
-    el('#toggle-instructions').addEventListener('click', () => instructionDialog.showModal());
-    el('#close-instructions').addEventListener('click', () => instructionDialog.close());
-    instructionDialog.addEventListener('click', (e) => {
-        if (e.target === instructionDialog) instructionDialog.close();
-    });
+    initInfoModal();
 });

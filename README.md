@@ -158,6 +158,38 @@ A future sample source (e.g. the Concept2 Logbook API) would be a sibling
 module to `csv-source.js` producing the same reduced-sample shape — no
 changes to `pm5-mock.js` needed either way.
 
+## Shared header UI: `ui/info-modal.js`
+
+Every app built on `pm5-base` uses the same header convention: app name top
+left, a small "i" button next to it opening a `<dialog>` that describes the
+app and how Mock works, transport controls top right. `ui/info-modal.js` and
+`ui/info-modal.css` are the reusable half of that — DOM-touching, unlike the
+rest of `lib/`, so they live in their own directory. Load both, keep your
+dialog's content in your own `index.html`, and wire it up:
+
+```html
+<script src="pm5-base/ui/info-modal.js"></script>
+<link rel="stylesheet" href="pm5-base/ui/info-modal.css">
+```
+
+```html
+<header>
+    <h1>Your App</h1>       <!-- the "i" button is inserted right after this -->
+    <div id="controls">...</div>
+</header>
+
+<dialog id="info-modal">
+    <button data-close aria-label="Close">&times;</button>
+    <p>What your app does, and how Mock works.</p>
+</dialog>
+```
+
+```js
+initInfoModal(); // defaults: titleSelector 'header h1', dialogSelector '#info-modal'
+```
+
+See `example/index.html`/`app.js` for the reference wiring.
+
 ## Setting up a new ergarcade product repo
 
 For a one-off script, copying files out of `lib/` (above) is fine. For a full

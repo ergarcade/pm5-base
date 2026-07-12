@@ -17,9 +17,9 @@ No build step, no package manager, no framework — plain HTML/CSS/JS loaded
 directly by the browser. (This supersedes the separate `../pm5-hid` repo,
 which was the standalone USB-only version.)
 
-The repo is laid out as **library + example**, since `pm5-base` is meant to be
-the reusable foundation for future PM5 apps (distributed as one repo, not via
-npm):
+The repo is laid out as **library + shared UI + example**, since `pm5-base`
+is meant to be the reusable foundation for future PM5 apps (distributed as
+one repo, not via npm):
 
 ```
 lib/                  reusable, DOM-free protocol/data code
@@ -31,7 +31,10 @@ lib/                  reusable, DOM-free protocol/data code
     csv-source.js
     events-source.js
     concept2-result-44214428.csv
-example/               the demo app (all DOM-touching code)
+ui/                    reusable, DOM-touching widgets (the one exception to lib/'s DOM-free rule)
+  info-modal.js
+  info-modal.css
+example/               the demo app (all other DOM-touching code)
   index.html
   app.js
   style.css
@@ -183,7 +186,25 @@ matters — no module system):
    without real hardware to test against. A `typeof module` export shim at
    the end lets the node tests import the maps; it is a no-op in the
    browser.
-5. **`example/app.js`** — the only DOM-touching layer, and it is
+5. **`ui/info-modal.js`/`ui/info-modal.css`** — the one shared DOM-touching
+   piece outside `example/`, since every app built on `pm5-base` wants the
+   same header convention: app name top left, a small round "i" button next
+   to it, transport controls top right. `initInfoModal({ titleSelector,
+   dialogSelector })` inserts the button right after the title (`header h1`
+   by default) and wires it to `dialog.showModal()`, plus a `[data-close]`
+   button and backdrop click to `dialog.close()`. It owns only that wiring —
+   the dialog's actual content (what the app does, how Mock works) stays in
+   each app's own `index.html` as a `<dialog id="info-modal">`, since that
+   text is the one part that legitimately differs per app.
+   `ui/info-modal.css` is self-contained (its own `--pm5-ui-*` custom
+   properties with light/dark defaults) rather than depending on each app's
+   own theme tokens, which differ in name and value across apps — it drops
+   in unchanged regardless. `header h1 + .info-toggle { margin-right: auto
+   }` is what keeps the button snug against the title while still pushing
+   `#controls` to the far right, overriding whatever `justify-content` the
+   app's own header rule uses. Untested — DOM-wired glue, same category as
+   `example/app.js` below.
+6. **`example/app.js`** — the only DOM-touching layer in `example/`, and it is
    **transport-agnostic**. All three classes expose the same interface — public
    `connect()` / `disconnect()` / `connected()`, lifecycle events
    `connecting` / `connected` (data = monitor info) / `disconnected`, and a
@@ -215,12 +236,19 @@ matters — no module system):
    nothing's chosen — so a workout recorded by `ergarcade/recorder` (either
    export format) can be replayed here.
 
-`example/index.html` also holds an instructions panel implemented as a native
-`<dialog>` (`#instruction-text`), opened via `showModal()`/`close()` — no custom
-modal library.
+`example/index.html` also holds the info dialog (`#info-modal`, native
+`<dialog>`) that `ui/info-modal.js` wires up — no custom modal library.
 
 Styling (`example/style.css`) is a single stylesheet using CSS custom
 properties, with a `prefers-color-scheme: dark` override block for dark mode.
+
+### Wiring up the shared header/info-modal in a new app
+
+Load `ui/info-modal.js`/`ui/info-modal.css`, add a `<dialog id="info-modal">`
+with the app's own description + a "how Mock works" paragraph (`example`'s is
+the reference copy), and call `initInfoModal()` from `DOMContentLoaded`. No
+changes to `ui/info-modal.js` needed — it's generic across apps as long as
+the header has an `<h1>` and the page has one `#info-modal` dialog.
 
 ### Adding another transport
 
