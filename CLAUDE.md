@@ -93,7 +93,16 @@ matters — no module system):
    Owns the CSAFE-over-USB protocol: builds/sends command frames (byte-stuffing,
    XOR checksum), parses responses, and polls at 100 ms (a stroke frame every
    tick, a full workout frame every 5th tick). Dispatches its data as `workout`
-   and `stroke` events. Also zero DOM dependencies.
+   and `stroke` events. Also zero DOM dependencies. Its `pace` field
+   (`CSAFE_GETPACE_CMD`, 0xA6) needs **no scaling** — the raw u16 is already
+   whole seconds/500m (CSAFE spec Appendix B: pace display resolution is
+   1 sec), unlike BLE's `currentPace`/`averagePace`, which really are a
+   0.01 sec lsb but come from a *different* PM-specific command
+   (`CSAFE_PM_GET_STROKE_500MPACE`, see `pm5-ble.js`). Don't copy that
+   scaling over here again — confirmed against two recorded HID workouts by
+   cross-checking the raw value against `Watts = 2.8/pace³` (pace in
+   sec/meter), which matched 1:1. The conversion lives in the exported
+   `hidPaceSeconds()` helper (pinned by `test/pm5-hid.test.mjs`).
 3. **`lib/pm5-mock.js`** — `PM5Mock`, an `EventTarget` subclass replaying a
    flat, already transport-shaped raw event list — `[{ t, type, data }]`, `t`
    = elapsed ms since replay start — through one chained-`setTimeout` engine
