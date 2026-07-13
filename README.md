@@ -194,9 +194,9 @@ See `example/index.html`/`app.js` for the reference wiring.
 
 For a one-off script, copying files out of `lib/` (above) is fine. For a full
 product repo meant to receive ongoing updates, use a git submodule instead.
-Use the `new-product-repo` Claude Code skill
-(`.claude/skills/new-product-repo/SKILL.md`) rather than re-deriving this —
-short version:
+Use the `new-product-repo` Claude Code skill (lives in the
+[`ergarcade/internal-tools`](https://github.com/ergarcade/internal-tools)
+repo, not here) rather than re-deriving this — short version:
 
 1. Create the repo, named after the product (not `pm5-<name>` — that prefix is
    legacy from the pre-submodule `pm5-overlay`/`pm5-detail`/`pm5-dump` repos,
