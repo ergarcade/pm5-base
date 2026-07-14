@@ -190,6 +190,53 @@ initInfoModal(); // defaults: titleSelector 'header h1', dialogSelector '#info-m
 
 See `example/index.html`/`app.js` for the reference wiring.
 
+## Keeping the screen awake: `ui/wake-lock.js`
+
+Apps running unattended on an arcade display shouldn't get dimmed or
+screensaved mid-workout. `initWakeLockIndicator(monitor)` requests a [Screen
+Wake Lock] while `monitor` is connected and releases it on disconnect,
+reacquiring automatically if the tab was briefly hidden (the browser
+force-releases the lock whenever the tab isn't visible) and it's still
+connected when it comes back — and inserts a 🔒/🔓 status icon right after
+the info button (`#info-toggle`, from `ui/info-modal.js` — load that first)
+with a native tooltip explaining the current state:
+
+```html
+<script src="pm5-base/ui/info-modal.js"></script>
+<script src="pm5-base/ui/wake-lock.js"></script>
+<link rel="stylesheet" href="pm5-base/ui/info-modal.css">
+<link rel="stylesheet" href="pm5-base/ui/wake-lock.css">
+```
+
+Call `createWakeLockIndicator()` once at startup (no `monitor` yet) so the
+icon shows its default 🔓 state immediately on page load, before the user
+has connected anything:
+
+```js
+document.addEventListener('DOMContentLoaded', () => {
+    createWakeLockIndicator();
+    // ...
+});
+```
+
+Then wire it to each `monitor` instance — safe to call again with a new
+instance (e.g. your app rebuilds `monitor` on every Connect click after a
+Disconnect): `initWakeLockIndicator`/`createWakeLockIndicator` reuse the
+existing icon rather than inserting another one.
+
+```js
+monitor.addEventListener('connected', cbConnected);
+monitor.addEventListener('disconnected', cbDisconnected);
+initWakeLockIndicator(monitor);
+```
+
+No-ops in browsers without the API (e.g. Firefox) rather than throwing — the
+icon just stays 🔓. If you want the lock behavior without the icon, call the
+lower-level `initWakeLock(monitor)` directly instead (no `#info-toggle`
+dependency). See `example/index.html`/`app.js` for the reference wiring.
+
+[Screen Wake Lock]: https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API
+
 ## Setting up a new ergarcade product repo
 
 For a one-off script, copying files out of `lib/` (above) is fine. For a full
@@ -246,7 +293,10 @@ with open('docs/csafe-spec.txt', 'w') as f:
 
 The pure `lib/` modules (field/formatter maps, CSV/JSON parsing, sample
 mapping, and `PM5Mock`'s replay engine itself, driven end-to-end with real
-timers) have node tests, no browser or hardware required:
+timers) have node tests, no browser or hardware required. `ui/wake-lock.js`'s
+connect/disconnect/visibilitychange wiring is also tested this way, against a
+stubbed `navigator`/`document` — `ui/info-modal.js` is the one DOM-*rendering*
+exception, untested since it needs a real browser:
 
 ```
 node --test

@@ -192,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         monitor.addEventListener('connecting', cbConnecting);
         monitor.addEventListener('connected', cbConnected);
         monitor.addEventListener('disconnected', cbDisconnected);
+        initWakeLockIndicator(monitor);
 
         monitor.connect()
             .then(() => { if (!monitor?.connected()) cbDisconnected(); })  // picker cancelled
@@ -199,4 +200,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     initInfoModal();
+    createWakeLockIndicator(); // shows the default (inactive) icon before any monitor exists
 });
