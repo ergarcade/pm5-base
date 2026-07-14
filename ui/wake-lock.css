@@ -1,0 +1,19 @@
+/* Depends on ui/info-modal.css already being loaded -- the indicator is
+   always positioned right after #info-toggle (see wake-lock.js), so it
+   reuses info-modal.css's --pm5-ui-* tokens instead of redefining them. */
+
+/* .info-toggle normally gets margin-right: auto (info-modal.css) to push
+   #controls to the far right while staying snug against the <h1>. When the
+   wake-lock indicator follows it, move that auto-margin onto the indicator
+   instead, so the pair stays snug together and whichever is visually last
+   is the one pushing #controls away. */
+header h1 + .info-toggle:has(+ .wake-lock-indicator) {
+    margin-right: 0.35rem;
+}
+
+.wake-lock-indicator {
+    margin-right: auto;
+    font-size: 0.8rem;
+    line-height: 1.35rem;
+    cursor: default;
+}

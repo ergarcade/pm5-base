@@ -215,7 +215,43 @@ matters — no module system):
    `#controls` to the far right, overriding whatever `justify-content` the
    app's own header rule uses. Untested — DOM-wired glue, same category as
    `example/app.js` below.
-6. **`example/app.js`** — the only DOM-touching layer in `example/`, and it is
+6. **`ui/wake-lock.js`** — the other shared `ui/` piece, split into two
+   layers. `initWakeLock(monitor, { nav, doc, onChange })` is the pure wiring:
+   requests a Screen Wake Lock on `monitor`'s `connected` event, releases it
+   on `disconnected`, and also listens for `visibilitychange` to reacquire if
+   still connected when the tab becomes visible again (the browser
+   force-releases the lock whenever the tab is hidden). No-ops (doesn't
+   throw) in browsers without `navigator.wakeLock` (e.g. Firefox, which keeps
+   it behind a flag; Safari has supported it since 16.4) — `onChange`
+   (if given) still fires with `false` so a caller can reflect that state.
+   Unlike `info-modal.js`, this layer touches no DOM elements — only
+   `navigator`/`document` — so it takes them as injectable `{ nav, doc }`
+   options (defaulting to the real globals) and is covered by
+   `test/wake-lock.test.mjs` against a stubbed `EventTarget` monitor and fake
+   `navigator.wakeLock`/`document`. `createWakeLockIndicator({ doc })` is the
+   DOM-*rendering* layer on top: inserts a 🔒/🔓 `<span
+   class="wake-lock-indicator">` right after `#info-toggle` (so it depends
+   on `info-modal.js` having run first) with a native `title` tooltip, and
+   returns the `setActive` updater. It's **idempotent** — reuses the
+   existing `.wake-lock-indicator` if one is already there rather than
+   inserting another — because an app's `monitor` instance gets rebuilt on
+   every Connect click (a fresh `PM5`/`PM5HID`/`PM5Mock`), so the indicator
+   needs to survive being wired up again without leaving stray icons behind
+   (regression covered by `test/wake-lock.test.mjs` against a small fake-DOM
+   stub, unlike `info-modal.js`, which is fully untested since it has no
+   comparable branch to regress). `initWakeLockIndicator(monitor)` is the
+   convenience wrapper: calls `createWakeLockIndicator` then `initWakeLock`
+   with `onChange` wired to `setActive`. Call `createWakeLockIndicator()` on
+   its own once at startup (before any `monitor` exists) so the icon shows
+   its default inactive state immediately on page load, then
+   `initWakeLockIndicator(monitor)` per connection. `ui/wake-lock.css` moves
+   `.info-toggle`'s `margin-right: auto` (see `info-modal.css`) onto the
+   indicator instead via `header h1 + .info-toggle:has(+
+   .wake-lock-indicator)`, so the pair stays snug together next to the
+   `<h1>` while `#controls` still gets pushed to the far right. Apps that
+   only want the lock behavior without the icon can call
+   `initWakeLock(monitor)` directly.
+7. **`example/app.js`** — the only DOM-touching layer in `example/`, and it is
    **transport-agnostic**. All three classes expose the same interface — public
    `connect()` / `disconnect()` / `connected()`, lifecycle events
    `connecting` / `connected` (data = monitor info) / `disconnected`, and a
