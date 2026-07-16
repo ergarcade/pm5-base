@@ -79,6 +79,21 @@ monitor.addEventListener('multiplexed-information', e => console.log(e.data));
 await monitor.connect(); // prompts the Bluetooth device picker
 ```
 
+**Known issue: reconnecting after a disconnect can hang.** On some
+laptops/OS Bluetooth stacks (reported on Windows, also seen on macOS),
+connecting over Web Bluetooth causes the OS to register the PM5 as a
+bonded/paired device — a generic "Bluetooth device" entry shows up in your
+OS's Bluetooth settings that wasn't there before. If that bond/link isn't
+fully released, the next `connect()` attempt's `device.gatt.connect()` can
+hang indefinitely rather than failing — a known upstream Chromium behavior,
+see [GoogleChrome/samples#668][gatt-connect-hang]. `pm5-ble.js` bounds this
+with a 15s timeout so the UI recovers with an actionable error instead of
+sticking on "Connecting" forever; the underlying fix is to open your OS
+Bluetooth settings, remove/forget that stray device entry, then reconnect
+from the app.
+
+[gatt-connect-hang]: https://github.com/GoogleChrome/samples/issues/668
+
 ### `PM5HID` — USB (`lib/pm5-hid.js`)
 
 Requires Chrome or Edge (Web HID isn't supported in Firefox/Safari) and the

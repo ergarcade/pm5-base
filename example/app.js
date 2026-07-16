@@ -196,7 +196,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         monitor.connect()
             .then(() => { if (!monitor?.connected()) cbDisconnected(); })  // picker cancelled
-            .catch((error) => { console.log(error); cbDisconnected(); });
+            .catch((error) => {
+                console.log(error);
+                cbDisconnected();
+                el('#monitor-information').textContent = error.message;
+            });
     });
 
     initInfoModal();
