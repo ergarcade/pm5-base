@@ -329,7 +329,17 @@ For a full-fidelity source: write a sibling module to
   shift or drop when multiplexed (see the `o`/`p`/`s` offset variables). When
   adding or fixing a field, check both code paths. `force-curve-data` (0x003d)
   is deliberately unhandled — not present on real hardware despite being in the
-  spec.
+  spec. `#openGatt()`'s `device.gatt.connect()` call is wrapped in a 15s
+  `withTimeout()` (module-level pure helper, exported via the same
+  `typeof module` shim as `pm5-hid.js`'s `hidPaceSeconds`, pinned by
+  `test/pm5-ble.test.mjs`) because that promise can hang forever instead of
+  rejecting — seen when the OS Bluetooth stack still holds a bond/link from a
+  previous session (see README.md's "Known issue" note and
+  https://github.com/GoogleChrome/samples/issues/668). Without the timeout,
+  `app.js`'s Connect button gets stuck disabled forever with no recovery
+  short of a page reload; the timeout's error message (shown in
+  `#monitor-information` by `app.js`'s `.catch()`) tells the user to check
+  their OS Bluetooth device list instead.
 - **HID (`pm5-hid.js`)**: CSAFE over HID report ID `0x02` with a 120-byte
   payload. Frames are bounded by `0xf1` (start) / `0xf2` (stop); bytes in
   `0xf0–0xf3` inside the payload are byte-stuffed, and a single XOR checksum byte
