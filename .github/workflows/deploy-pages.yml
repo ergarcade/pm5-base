@@ -29,12 +29,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.0
-      - name: Assemble site (example/ + lib/, rewriting ../lib/ paths)
+      - name: Assemble site (example/ + lib/ + ui/, rewriting ../lib/ and ../ui/ paths)
         run: |
           mkdir -p _site
           cp -r example/. _site/
           cp -r lib _site/lib
-          find _site -maxdepth 1 -type f \( -name '*.html' -o -name '*.js' \) -exec sed -i 's#\.\./lib/#lib/#g' {} +
+          cp -r ui _site/ui
+          find _site -maxdepth 1 -type f \( -name '*.html' -o -name '*.js' \) -exec sed -i 's#\.\./lib/#lib/#g; s#\.\./ui/#ui/#g' {} +
       - uses: actions/upload-pages-artifact@v5.0.0
 
   deploy:
